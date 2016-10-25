@@ -1,6 +1,10 @@
+# Hakyll
 _cache
 dist
 site
 site.hi
 site.o
 _site
+
+# Elm
+elm-stuff

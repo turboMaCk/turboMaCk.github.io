@@ -1,12 +1,18 @@
 --------------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
 import           Data.Monoid (mappend)
+
 import           Hakyll
+import Hakyll.Contrib.Elm
 
 
 --------------------------------------------------------------------------------
 main :: IO ()
 main = hakyll $ do
+    match "elm/*.elm" $ do
+        route $ setExtension "js" `composeRoutes` gsubRoute "elm/" (const "js/")
+        compile elmMake
+
     match "images/*" $ do
         route   idRoute
         compile copyFileCompiler
@@ -34,7 +40,6 @@ main = hakyll $ do
                 >>= loadAndApplyTemplate "templates/archive.html" archiveCtx
                 >>= loadAndApplyTemplate "templates/default.html" archiveCtx
                 >>= relativizeUrls
-
 
     match "index.html" $ do
         route idRoute
