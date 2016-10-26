@@ -8,5 +8,6 @@ executable site
   build-depends:    base == 4.*
                   , hakyll == 4.9.*
                   , hakyll-contrib-elm
-  ghc-options:      -threaded
+                  , hakyll-sass
+  ghc-options:      -threaded -Wall
   default-language: Haskell2010

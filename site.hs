@@ -1,30 +1,31 @@
 --------------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
-import           Data.Monoid (mappend)
+import Data.Monoid (mappend)
 
-import           Hakyll
+import Hakyll
 import Hakyll.Contrib.Elm
-
+import Hakyll.Web.Sass (sassCompiler)
 
 --------------------------------------------------------------------------------
 main :: IO ()
 main = hakyll $ do
-    match "elm/*.elm" $ do
-        route $ setExtension "js" `composeRoutes` gsubRoute "elm/" (const "js/")
-        compile elmMake
 
-    match "images/*" $ do
-        route   idRoute
+    match "assets/*" $ do
+        route idRoute
         compile copyFileCompiler
 
-    match "css/*" $ do
-        route   idRoute
-        compile compressCssCompiler
+    match "sass/*" $ do
+        route $ setExtension "css" `composeRoutes` gsubRoute "sass/" (const "css/")
+        compile (compressCssItem <$> sassCompiler)
+
+    match "elm/*" $ do
+        route $ setExtension "js" `composeRoutes` gsubRoute "elm/" (const "js/")
+        compile elmMake
 
     match "posts/*" $ do
         route $ setExtension "html"
         compile $ pandocCompiler
-            >>= loadAndApplyTemplate "templates/post.html"    postCtx
+            >>= loadAndApplyTemplate "templates/post.html" postCtx
             >>= loadAndApplyTemplate "templates/default.html" postCtx
             >>= relativizeUrls
 
@@ -62,3 +63,6 @@ postCtx :: Context String
 postCtx =
     dateField "date" "%B %e, %Y" `mappend`
     defaultContext
+
+compressCssItem :: Item String -> Item String
+compressCssItem = fmap compressCss
