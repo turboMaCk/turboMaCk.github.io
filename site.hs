@@ -18,7 +18,7 @@ main = hakyll $ do
         route $ setExtension "css" `composeRoutes` gsubRoute "sass/" (const "css/")
         compile (compressCssItem <$> sassCompiler)
 
-    match "elm/*" $ do
+    match "elm/*.elm" $ do
         route $ setExtension "js" `composeRoutes` gsubRoute "elm/" (const "js/")
         compile elmMake
 
