@@ -1,12 +1,14 @@
+
 $font_family: open sans, helvetica, arial, sans-serif;
 $headline_font_family: cabin, helvetica, arial, sans-serif;
 $highlight_color: #00e4c8;
+$grey_color: #555;
 
 body {
     font-family: $font_family;
     color: black;
     font-size: 16px;
-    line-height: 1.5em;
+    line-height: 1.7rem;
 }
 
 a,
@@ -23,6 +25,32 @@ a:active {
     color: black;
 }
 
+h1 {
+    font-family: $headline_font_family;
+    size: 30px;
+    text-transform: capitalize;
+    line-height: 1.3em;
+}
+
+h2 {
+    font-family: $headline_font_family;
+    font-size: 22px;
+    margin-top: 40px;
+    text-transform: capitalize;
+    line-height: 1.3em;
+}
+
+pre {
+    border: 1px dashed lighten($highlight_color, 20%);
+    font-size: 14px;
+    line-height: 1.3rem;
+}
+
+.twitter-tweet {
+    margin-left: auto;
+    margin-right: auto;
+}
+
 .page-header {
     margin-top: 20px;
     overflow: hidden;
@@ -37,6 +65,7 @@ a:active {
     padding-left: 45px;
     box-sizing: border-box;
     float: left;
+    line-height: 25px;
 
     a {
         text-decoration: none;
@@ -61,33 +90,66 @@ a:active {
 
 .main-container {
     position: relative;
-    margin: 0px auto 0px 50px;
+    margin: 0 50px;
     max-width: 900px;
-}
 
-h1 {
-    font-family: $headline_font_family;
-    size: 30px;
-    text-transform: capitalize;
-}
-
-h2 {
-    font-family: $headline_font_family;
-    font-size: 22px;
-    margin-top: 40px;
-    text-transform: capitalize;
+    .content {
+        overflow: hidden;
+    }
 }
 
 div#footer {
-    border-top: dashed 1px #555;
-    color: #555;
+    border-top: dashed 1px $grey_color;
+    color: $grey_color;
     font-size: 12px;
     margin-top: 30px;
     padding: 12px 0px 12px 0px;
 }
 
 div.info {
-    color: #555;
+    color: $grey_color;
     font-size: 14px;
     font-style: italic;
 }
+
+.post {
+    h2 {
+        margin-bottom: 5px;
+    }
+
+    .data {
+        color: $grey_color;
+        font-weight: normal;
+        font-style: italic;
+    }
+
+    .desc {
+        color: $grey_color;
+    }
+}
+
+.redit-discussion {
+    font-style: italic;
+    margin-top: 70px;
+
+    .reddit-logo {
+        float: left;
+        height: 75px;
+        margin-right: 10px;
+    }
+}
+
+/* Syntax highlighting */
+.sourceCode span.kw { color: darken($highlight_color, 20%); font-weight: bold; }
+.sourceCode span.dt { color: darken($highlight_color, 10%); }
+.sourceCode span.dv { color: #40a070; }
+.sourceCode span.bn { color: #40a070; }
+.sourceCode span.fl { color: #40a070; }
+.sourceCode span.ch { color: #4070a0; }
+.sourceCode span.st { color: #4070a0; }
+.sourceCode span.co { color: #60a0b0; font-style: italic; }
+.sourceCode span.ot { color: #007020; }
+.sourceCode span.al { color: red; font-weight: bold; }
+.sourceCode span.fu { color: #06287e; }
+.sourceCode span.re { }
+.sourceCode span.er { color: red; font-weight: bold; }

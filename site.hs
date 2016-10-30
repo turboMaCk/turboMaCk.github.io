@@ -29,6 +29,10 @@ main = hakyll $ do
             >>= loadAndApplyTemplate "templates/default.html" postCtx
             >>= relativizeUrls
 
+    match "favicon.png" $ do
+        route idRoute
+        compile copyFileCompiler
+
     create ["archive.html"] $ do
         route idRoute
         compile $ do
