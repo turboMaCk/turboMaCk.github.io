@@ -1,3 +1,5 @@
+@import 'variables';
+
 /* Syntax highlighting */
 .sourceCode span.kw { color: darken($highlight_color, 20%); font-weight: bold; }
 .sourceCode span.dt { color: darken($highlight_color, 10%); }
