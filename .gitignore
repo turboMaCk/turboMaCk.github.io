@@ -6,5 +6,9 @@ site.hi
 site.o
 _site
 
+# cabal
+cabal.sandbox.config
+.cabal-sandbox/
+
 # Elm
 elm-stuff

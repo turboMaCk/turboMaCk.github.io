@@ -23,7 +23,12 @@
 
     <main class="main-container">
       <div class="content">
-        <h1>$title$</h1>
+        <h1>
+          $title$
+          $if(subtitle)$
+            <span class="subtitle">$subtitle$</span>
+          $endif$
+        </h1>
 
         $body$
       </div>

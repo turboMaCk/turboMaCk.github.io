@@ -4,7 +4,12 @@ $for(posts)$
         <header class="post-head">
             <h2>
                 <span class="data">$date$:</span>
-                <a href="$url$">$title$</a>
+                <a href="$url$">
+                    $title$
+                    $if(subtitle)$
+                        <br>$subtitle$
+                    $endif$
+                </a>
             </h2>
         </header>
         $if(description)$
