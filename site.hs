@@ -22,7 +22,7 @@ main = hakyll $ do
         route $ setExtension "js" `composeRoutes` gsubRoute "elm/" (const "js/")
         compile elmMake
 
-    match "posts/*" $ do
+    match "posts/*.md" $ do
         route $ setExtension "html"
         compile $ pandocCompiler
             >>= loadAndApplyTemplate "templates/post.html" postCtx
