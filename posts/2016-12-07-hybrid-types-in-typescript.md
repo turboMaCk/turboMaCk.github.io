@@ -58,7 +58,7 @@ That said I think we can agree that:
 
 ## Interface
 
-Now we know what we need so lets define interface for out `exactTip` function.
+Now we know what we need so lets define interface for out `exactAxis` function.
 
 ```typescript
 import * as d3 from 'd3';
@@ -114,23 +114,23 @@ That's exactly what I was looking for!
 Let's have a look at how we minimal "implementation" that satisfy our interface:
 
 ```javascript
-function exactTip<T>() : ExactTip<T> {
-    const tip = <ExactTip<T>>function() {
+function exactAxis<T>() : ExactAxis<T> {
+    const axis = <ExactAxis<T>>function() {
     }
 
-    tip.scale = function(scale : d3.scale.Ordinal<any, any>) : ExactTip<T> {
-        return tip;
+    axis.scale = function(scale : d3.scale.Ordinal<any, any>) : ExactAxis<T> {
+        return axis;
     }
 
-    tip.data = function(d : T[]) {
-        return tip;
+    axis.data = function(d : T[]) {
+        return axis;
     }
 
-    tip.tickFormat = function(fc : TickFormat<T>) : ExactTip<T> {
-        return tip;
+    axis.tickFormat = function(fc : TickFormat<T>) : ExactAxis<T> {
+        return axis;
     }
 
-    return tip;
+    return axis;
 }
 ```
 
@@ -140,7 +140,7 @@ Now comes the easy part. We can just simply implement logic (and that's always s
 So as a bonus - This is one possible implementation:
 
 ```javascript
-function exactTip<T>() : ExactAxis<T> {
+function exactAxis<T>() : ExactAxis<T> {
     // Constants
     const TEXT_DELTA : number = 25;
     const WITHOUT_TEXT_DELTA : number = 12.5;
@@ -152,7 +152,7 @@ function exactTip<T>() : ExactAxis<T> {
 
     // Render
 
-    const tip = <ExactAxis<T>>function(g) {
+    const axis = <ExactAxis<T>>function(g) {
 
         // D3 always returns array
         // Lets render axis for every given group.
@@ -219,22 +219,22 @@ function exactTip<T>() : ExactAxis<T> {
 
     // Public Interface
 
-    tip.scale = function(newScale : d3.scale.Ordinal<any, any>) : ExactAxis<T> {
+    axis.scale = function(newScale : d3.scale.Ordinal<any, any>) : ExactAxis<T> {
         scale = newScale;
-        return tip;
+        return axis;
     }
 
-    tip.data = function(d : T[]) {
+    axis.data = function(d : T[]) {
         data = d;
-        return tip;
+        return axis;
     }
 
-    tip.tickFormat = function(fc : TickFormat<T>) : ExactAxis<T> {
+    axis.tickFormat = function(fc : TickFormat<T>) : ExactAxis<T> {
         tickFormat = fc;
-        return tip;
+        return axis;
     }
 
-    return tip;
+    return axis;
 }
 ```
 
@@ -243,13 +243,13 @@ to get element in d3's `each` method. It doesn't make sense to go against librar
 
 *Note: This is really simplified implementation. Actual thing similar to this we have in our lib uses 3 types of ticks
 (long text, short text, no text). This means also different interface for `FormatValue` an we are also always adding
-line tip (without text) in middle of tips with text. However I think this simpler example is better for purpose of this
+line tick (without text) in middle of ticks with text. However I think this simpler example is better for purpose of this
 article.*
 
 ## Don't Drink Too Much Kool-Aid
 
 TypeScript maybe lets you express these kind of dynamic APIs but there is down side to it.
 If you remove implementation for any method compiler won't complain even though your function
-does not return valid `ExactTip<T>` implementation. However if you make mistake in method implementation (change its types) it will fail
+does not return valid `ExactAxis<T>` implementation. However if you make mistake in method implementation (change its types) it will fail
 during compile time which seems as an improvement to pure JS version. That said if you want to play with something like this
 It's usually good idea to **always start with boilerplate with all methods defined**.
