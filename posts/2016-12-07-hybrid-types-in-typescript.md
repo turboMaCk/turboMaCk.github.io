@@ -2,6 +2,7 @@
 title: Hybrid Types in TypeScript
 subtitle: Being Dynamic With Type Checker
 description: Using functions with custom interfaces in TypeScript
+reddit: r/typescript/comments/5h15an/hybrid_types_in_typescript
 ---
 
 Yesterday I've been refactoring one of our internal library in [GWI](globalwebindex.net) from JavaScript to TypeScript.
@@ -10,7 +11,7 @@ I'm not using `prototype`, `class` or `this` much often.
 I'm rather using [Factory Constructor Pattern](http://javascript.info/tutorial/factory-constructor-pattern)
 quite often as well as [Higher Order Functions](https://en.wikipedia.org/wiki/Higher-order_function) for simulating [currying](https://en.wikipedia.org/wiki/Currying)
 and like to with objects and play with scopes. Now you might think that this is silly. No one will understand my code and using truly
-private functions makes it harder to extend functionality. And you're right:D. Anyway I know that I can write more reliable
+private functions makes it harder to extend functionality. And you're right:D Anyway I know that I can write more reliable
 code more quickly and from my experience when code is reliable enough not many people will need to change it.
 And when they do they are mostly experienced and are able to understand it.
 Also I like private functions. If you miss any functionality or abstraction it's always good idea to add it directly to library
@@ -33,8 +34,8 @@ a good idea to have at least type check for these interfaces? I think it would!
 For purpose of this tutorial I've picked one smaller part rather than whole chart.
 D3 itself comes with component called [d3.svg.axis](https://github.com/d3/d3/blob/master/API.md#axes-d3-axis).
 However sometimes it doesn't fit your needs so you'll need to implement your own solution.
-Lets say we want to implement custom axis which will create ticks based on data we have so for each data-point will have tick on axis.
-This is how we want to our new component:
+Lets say we want to implement custom axis which will create ticks based on data we have so for each data-point it will create a tick on axis.
+This is how we want to use our new component:
 
 ```javascript
 const axis = exactAxis()
@@ -45,7 +46,7 @@ const axis = exactAxis()
 d3.select('.axis-group').call(axis);
 ```
 
-As you can see I've named our component `exactAxis`. It's a `function`. However it returns some `Object`
+As you can see I've chosen `exactAxis` as a name for this component. It's a `function`. However it returns some `Object`
 that has at least `scale`, `data` & `tickFormat` methods. We're using chaining so at least `scale` and `data` should return object they are defined on.
 Also on the last line we are using [d3.selection.call](https://github.com/d3/d3-selection/blob/master/README.md#selection_call)
 which means that `axis` (thing returned by `tickFormat` call) needs to be `function`. This might mean that `tickFormat` returns some `function` instead of `object`
@@ -53,7 +54,7 @@ but that is silly idea. Then you will need to always call `tickFormat` as last m
 That said I think we can agree that:
 
 - `exactAxis()` returns `function` (and **functions are Objects in JavaScript**) with all methods defined.
-- Every method returns object it's called on.
+- Each method will return object it's called on (so we can chain method calls).
 
 ## Interface
 
@@ -163,7 +164,7 @@ function exactTip<T>() : ExactAxis<T> {
                 .reduce((acc, d) => {
                     const latestWithText = last(acc.withText);
 
-                    // skipp duplicates immediately
+                    // skip duplicates immediately
                     if (latestWithText && latestWithText === d) { return acc; }
 
                     // for first or not too close we add text one
