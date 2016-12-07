@@ -44,6 +44,22 @@ pre {
     padding: 10px 20px;
 }
 
+blockquote {
+    position: relative;
+    margin-left: 4em;
+    margin-top: 50px;
+    margin-bottom: 50px;
+
+    &::before {
+        content: '"';
+        position: absolute;
+        top: -20px;
+        left: -20px;
+        font-size: 30px;
+        color: $grey_color;
+    }
+}
+
 .subtitle {
     display: block;
     color: $grey_color;
