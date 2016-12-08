@@ -137,7 +137,7 @@ function exactAxis<T>() : ExactAxis<T> {
 That's it! Actually this won't do anything but it's whole boiler plate we need.
 Now comes the easy part. We can just simply implement logic (and that's always simpler than designing API, right?)
 
-So as a bonus - This is one possible implementation:
+So as a bonus - This is one possible full implementation:
 
 ```javascript
 function exactAxis<T>() : ExactAxis<T> {
@@ -187,33 +187,33 @@ function exactAxis<T>() : ExactAxis<T> {
                     return acc;
                 }, { withText: [], withoutText: [] } );
 
-                // Render
+            // Render
 
-                // With text
-                const withText = g.selectAll('.tick.tick--with-text').data(ticksData.withText);
-                withText.enter().append('g')
-                    .attr('class', 'tick tick-with-text')
-                    .append('text')
-                    .style('text-anchor', 'middle');
-                withText.transition()
-                    .attr('transform', d => `translate(${scale(d), 15})`)
-                    .select('text')
-                    .text(tickFormat);
+            // With text
+            const withText = g.selectAll('.tick.tick--with-text').data(ticksData.withText);
+            withText.enter().append('g')
+                .attr('class', 'tick tick-with-text')
+                .append('text')
+                .style('text-anchor', 'middle');
+            withText.transition()
+                .attr('transform', d => `translate(${scale(d), 15})`)
+                .select('text')
+                .text(tickFormat);
 
-                withText.exit().remove();
+            withText.exit().remove();
 
-                // Without text
-                const withoutText = d3.selectAll('.tick.tick--without-text').data(ticksData.withoutText);
-                withoutText.enter().append('g')
-                    .attr('class', 'tick tick-without-text')
-                    .append('line')
-                    .attr('x1', 0)
-                    .attr('x2', 0)
-                    .attr('y1', 0)
-                    .attr('y2', 5);
-                withoutText.transition()
-                    .attr('transform', d => `trnaslate(${scale(d)}, 0)`);
-                withoutText.exit().remove();
+            // Without text
+            const withoutText = d3.selectAll('.tick.tick--without-text').data(ticksData.withoutText);
+            withoutText.enter().append('g')
+                .attr('class', 'tick tick-without-text')
+                .append('line')
+                .attr('x1', 0)
+                .attr('x2', 0)
+                .attr('y1', 0)
+                .attr('y2', 5);
+            withoutText.transition()
+                .attr('transform', d => `trnaslate(${scale(d)}, 0)`);
+            withoutText.exit().remove();
         });
     }
 
