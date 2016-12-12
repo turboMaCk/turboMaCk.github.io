@@ -175,7 +175,7 @@ function exactAxis<T>() : ExactAxis<T> {
                         const latestWithoutText = last(acc.withoutText);
 
                         // check for delta from latest with text
-                        if (Math.abs(scale(latestWithoutText) - scale(d)) >= WITHOUT_TEXT_DELTA) {
+                        if (Math.abs(scale(latestWithText) - scale(d)) >= WITHOUT_TEXT_DELTA) {
 
                             // check for delta from latest without text
                             if (!latestWithoutText || Math.abs(scale(latestWithoutText) - scale(d)) >= WITHOUT_TEXT_DELTA) {
@@ -191,28 +191,33 @@ function exactAxis<T>() : ExactAxis<T> {
 
             // With text
             const withText = g.selectAll('.tick.tick--with-text').data(ticksData.withText);
+
             withText.enter().append('g')
-                .attr('class', 'tick tick-with-text')
+                .attr('class', 'tick tick--with-text')
                 .append('text')
                 .style('text-anchor', 'middle');
+
             withText.transition()
-                .attr('transform', d => `translate(${scale(d), 15})`)
+                .attr('transform', d => `translate(${scale(d)}, 15)`)
                 .select('text')
                 .text(tickFormat);
 
             withText.exit().remove();
 
             // Without text
-            const withoutText = d3.selectAll('.tick.tick--without-text').data(ticksData.withoutText);
+            const withoutText = g.selectAll('.tick.tick--without-text').data(ticksData.withoutText);
+
             withoutText.enter().append('g')
-                .attr('class', 'tick tick-without-text')
+                .attr('class', 'tick tick--without-text')
                 .append('line')
                 .attr('x1', 0)
                 .attr('x2', 0)
                 .attr('y1', 0)
                 .attr('y2', 5);
+
             withoutText.transition()
                 .attr('transform', d => `trnaslate(${scale(d)}, 0)`);
+
             withoutText.exit().remove();
         });
     }
