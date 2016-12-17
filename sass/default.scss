@@ -88,6 +88,10 @@ blockquote {
     float: left;
     line-height: 25px;
 
+    @media screen and (max-width: $mobile_breakpoint) {
+        padding-left: 15px;
+    }
+
     a {
         text-decoration: none;
         color: black;
@@ -116,6 +120,10 @@ blockquote {
 
     .content {
         overflow: hidden;
+    }
+
+    @media screen and (max-width: $mobile_breakpoint) {
+        margin: 0 20px;
     }
 }
 
