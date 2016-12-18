@@ -32,9 +32,15 @@ main = do
                      then defaultConfiguration { destinationDirectory = "generated/preview" }
                      else defaultConfiguration
 
+        postPattern folder =
+          (fromGlob $ folder ++ "/*.md") .||. (fromGlob $ folder ++ "/*.org")
+
         postsPattern = if previewMode
-                       then "posts/*.md" .||. "posts/drafts/*.md"
-                       else "posts/*.md"
+                       then postPattern "posts" .||. postPattern "posts/drafts"
+                       else postPattern "posts"
+
+    putStrLn $ show postsPattern
+    putStrLn $ show $ "posts/*.md" .||. "posts/drafts/*.md"
 
     when clean cleanPreview
 
