@@ -5,6 +5,7 @@ site
 site.hi
 site.o
 _site
+generated
 
 # cabal
 cabal.sandbox.config
