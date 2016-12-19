@@ -10,13 +10,25 @@ import Hakyll.Web.Sass (sassCompiler)
 
 --------------------------------------------------------------------------------
 
+postCtx :: Tags -> Context String
+postCtx tags =
+    mconcat
+        [ dateField "date" "%B %e, %Y"
+        , tagsField "tags" tags
+        , defaultContext
+        ]
+
+compressCssItem :: Item String -> Item String
+compressCssItem =
+    fmap compressCss
+
 cleanPreview :: IO ()
 cleanPreview = do
-  remove "generated/preview"
-  where
-    remove dir = do
-      putStrLn $ "Removing " ++ dir ++ "..."
-      removeDirectory dir
+    remove "generated/preview"
+    where
+        remove dir = do
+            putStrLn $ "Removing " ++ dir ++ "..."
+            removeDirectory dir
 
 --------------------------------------------------------------------------------
 
@@ -39,9 +51,6 @@ main = do
                        then postPattern "posts" .||. postPattern "posts/drafts"
                        else postPattern "posts"
 
-    putStrLn $ show postsPattern
-    putStrLn $ show $ "posts/*.md" .||. "posts/drafts/*.md"
-
     when clean cleanPreview
 
     hakyllWith hakyllConf $ do
@@ -57,11 +66,13 @@ main = do
             route $ setExtension "js" `composeRoutes` gsubRoute "elm/" (const "js/")
             compile elmMake
 
+        tags <- buildTags "posts/*" (fromCapture "tags/*.html")
+
         match postsPattern $ do
             route $ setExtension "html"
             compile $ pandocCompiler
-                >>= loadAndApplyTemplate "templates/post.html" postCtx
-                >>= loadAndApplyTemplate "templates/default.html" postCtx
+                >>= loadAndApplyTemplate "templates/post.html" (postCtx tags)
+                >>= loadAndApplyTemplate "templates/default.html" (postCtx tags)
                 >>= relativizeUrls
 
         match "favicon.png" $ do
@@ -73,7 +84,7 @@ main = do
             compile $ do
                 posts <- recentFirst =<< loadAll postsPattern
                 let archiveCtx =
-                        listField "posts" postCtx (return posts) `mappend`
+                        listField "posts" (postCtx tags) (return posts) `mappend`
                         defaultContext
 
                 makeItem ""
@@ -86,7 +97,7 @@ main = do
             compile $ do
                 posts <- recentFirst =<< loadAll postsPattern
                 let indexCtx =
-                        listField "posts" postCtx (return posts) `mappend`
+                        listField "posts" (postCtx tags) (return posts) `mappend`
                         defaultContext
 
                 getResourceBody
@@ -97,11 +108,3 @@ main = do
         match "templates/*" $ compile templateBodyCompiler
 
 --------------------------------------------------------------------------------
-
-postCtx :: Context String
-postCtx =
-    dateField "date" "%B %e, %Y" `mappend`
-    defaultContext
-
-compressCssItem :: Item String -> Item String
-compressCssItem = fmap compressCss
