@@ -60,7 +60,7 @@ That said I think we can agree that:
 
 Now we know what we need so lets define interface for out `exactAxis` function.
 
-```typescript
+```javascript
 import * as d3 from 'd3';
 
 interface TickFormat extends Function {
@@ -78,7 +78,7 @@ interface ExactAxis extends Function {
 As you can see there are some `any` used.
 Maybe it's good idea to solve this using [Generics](https://www.typescriptlang.org/docs/handbook/generics.html).
 
-```typescript
+```javascript
 import * as d3 from 'd3';
 
 interface TickFormat<T> extends Function {

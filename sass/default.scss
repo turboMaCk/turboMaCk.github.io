@@ -38,15 +38,37 @@ h2 {
 }
 
 pre {
-    border: 1px dashed lighten($highlight_color, 20%);
-    font-size: 14px;
-    line-height: 1.3rem;
-    padding: 10px 20px;
-    overflow: auto;
+    &.sourceCode {
+        border: 1px dashed lighten($highlight_color, 20%);
+        font-size: 14px;
+        line-height: 1.3rem;
+        padding: 10px 20px;
+        background: $light_color;
+        overflow: auto;
 
-    code {
-        padding: 0;
-        background: transparent;
+        code {
+            padding: 0;
+            background: transparent;
+        }
+    }
+
+    &.example {
+        border: 1px dashed lighten($grey_color, 20%);
+        padding: 0 20px;
+        font-size: 0.8em;
+        background: lighten($grey_color, 65%);
+        margin-top: -15px;
+        border-top: 1px dotted lighten($highlight_color, 20%);
+
+        &::before {
+            content: "=>";
+            margin-right: 5px;
+        }
+
+        code {
+            padding: 0;
+            background: transparent;
+        }
     }
 }
 
@@ -71,6 +93,26 @@ blockquote {
     }
 }
 
+table {
+    border-collapse: collapse;
+
+    td,
+    th {
+        border: 1px dashed black;
+        padding: 0 10px;
+
+    }
+
+    tr.even td {
+        background: lighten($grey_color, 50%);
+    }
+
+    th {
+        border-bottom: 1px solid black;
+        background: lighten($grey_color, 50%);
+    }
+}
+
 .subtitle {
     display: block;
     color: $grey_color;
@@ -92,7 +134,7 @@ blockquote {
     font-size: 20px;
     font-family: $headline_font_family;
     border-bottom: 2px solid black;
-    height: 75px;
+    height: 74px;
     padding-bottom: 7px;
     padding-left: 45px;
     box-sizing: border-box;
