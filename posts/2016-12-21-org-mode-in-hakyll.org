@@ -2,7 +2,7 @@
 title: Org Mode in Hakyll
 subtitle: The Ultimate Toolkit for Publishing?
 description: Testing Pandoc's org to HTML compilation.
-tags: Emacs, org-mode, Haskell, Hakyll, Pandoc
+tags: Emacs, org-mode, Haskell, Hakyll, Pandoc, literate programming, reproducible research
 ---
 
 As an [[https://gnu.org/software/emacs/][Emacs]] user I'm really glad that I can benefit from full power of [[http://pandoc.org][Pandoc]] thanks to [[https://jaspervdj.be/hakyll/][Hakyll]] while creating this site.
@@ -12,8 +12,10 @@ Org-mode is really powerful. There is only problem with it - it's almost exclusi
 Because Org is so exclusive to Emacs (written in E-Lisp) it's hardly default markup even for many Emacs users simply
 because many of them has to to support all kinds of users not just ones who happen to use Emacs and org. Markdown is de-facto standard these days.
 This is for example why I'm personally also writing markdown daily. However this is quite different when it comes
-to project maintained only by one person - you. Org mode is simply so much better for taking notes, creating to-dos, and much more
-that it become one of the most successful Emacs extension.
+to project maintained only by one person - you. Org mode is simply so much better for taking notes, creating to-dos and much more
+that it become one of the most successful Emacs extension. Especially when it comes to [[https://en.wikipedia.org/wiki/Literate_programming][literate programming]] which is what I mostly trying to do
+on this blog and more generally [[http://reproducibleresearch.net][reproducible research]] which is movement I'm pretty big fan of.
+I'm also actively looking for interesting ideas and tools since I've discovered [[https://jupyter.org][Jubyter notebooks]] about a year ago.
 
 To be honest since I'm mostly working on documents maintain by group of people (mostly colleagues) I'm not really an expert on org-mode.
 Anyway I was working on new blog post recently where I would really appreciate some of Org's features.
