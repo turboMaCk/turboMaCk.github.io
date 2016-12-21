@@ -7,6 +7,7 @@ import Control.Monad (when)
 import Hakyll
 import Hakyll.Contrib.Elm
 import Hakyll.Web.Sass (sassCompiler)
+import Text.Pandoc
 
 --------------------------------------------------------------------------------
 
@@ -22,6 +23,8 @@ compressCssItem :: Item String -> Item String
 compressCssItem =
     fmap compressCss
 
+-- Drafts
+
 cleanPreview :: IO ()
 cleanPreview = do
     remove "generated/preview"
@@ -29,6 +32,23 @@ cleanPreview = do
         remove dir = do
             putStrLn $ "Removing " ++ dir ++ "..."
             removeDirectory dir
+
+-- RSS feed
+
+feedCtx :: Context String
+feedCtx = mconcat
+    [ bodyField "description"
+    , defaultContext
+    ]
+
+feedConfiguration :: String -> FeedConfiguration
+feedConfiguration title = FeedConfiguration
+    { feedTitle       = "turbo_MaCk - " ++ title
+    , feedDescription = "Personal web page of turbo_MaCk"
+    , feedAuthorName  = "Marek Fajkus"
+    , feedAuthorEmail = "marek.faj@gmail.com"
+    , feedRoot        = "http://turbomack.github.iuo"
+    }
 
 --------------------------------------------------------------------------------
 
@@ -77,14 +97,18 @@ main = do
         match postsPattern $ do
             route $ setExtension "html"
             compile $ pandocCompiler
+                >>= saveSnapshot "content"
+                >>= return . fmap demoteHeaders
                 >>= loadAndApplyTemplate "templates/post.html" (postCtx tags)
                 >>= loadAndApplyTemplate "templates/default.html" (postCtx tags)
                 >>= relativizeUrls
 
+        -- Favicon
         match "favicon.png" $ do
             route idRoute
             compile copyFileCompiler
 
+        -- Archive
         create ["archive.html"] $ do
             let title = "Archive"
 
@@ -101,6 +125,13 @@ main = do
                     >>= loadAndApplyTemplate "templates/archive.html" archiveCtx
                     >>= loadAndApplyTemplate "templates/default.html" archiveCtx
                     >>= relativizeUrls
+        -- RSS feed
+        create ["rss.xml"] $ do
+            route idRoute
+            compile $ do
+                loadAllSnapshots postsPattern "content"
+                    >>= recentFirst
+                    >>= renderRss (feedConfiguration "All posts") feedCtx
 
         -- Post tags
         tagsRules tags $ \tag pattern -> do
@@ -118,6 +149,7 @@ main = do
                     >>= loadAndApplyTemplate "templates/default.html" ctx
                     >>= relativizeUrls
 
+        -- Home
         match "index.html" $ do
             route idRoute
             compile $ do
@@ -131,6 +163,7 @@ main = do
                     >>= loadAndApplyTemplate "templates/default.html" indexCtx
                     >>= relativizeUrls
 
+        -- Templates
         match "templates/*" $ compile templateBodyCompiler
 
 --------------------------------------------------------------------------------
