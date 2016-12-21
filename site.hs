@@ -44,7 +44,7 @@ feedCtx = mconcat
 feedConfiguration :: String -> FeedConfiguration
 feedConfiguration title = FeedConfiguration
     { feedTitle       = "turbo_MaCk - " ++ title
-    , feedDescription = "Personal web page of turbo_MaCk"
+    , feedDescription = "Personal website of turbo_MaCk"
     , feedAuthorName  = "Marek Fajkus"
     , feedAuthorEmail = "marek.faj@gmail.com"
     , feedRoot        = "http://turbomack.github.iuo"
