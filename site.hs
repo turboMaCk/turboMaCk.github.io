@@ -1,7 +1,7 @@
 --------------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
 import System.Environment
-import Data.Monoid (mappend)
+import Data.Monoid ((<>))
 import Control.Monad (when)
 
 import Hakyll
@@ -54,19 +54,25 @@ main = do
     when clean cleanPreview
 
     hakyllWith hakyllConf $ do
+
+
+        -- Assets
         match "assets/*" $ do
             route idRoute
             compile copyFileCompiler
 
+        -- Styles (SASS)
         match "sass/*" $ do
             route $ setExtension "css" `composeRoutes` gsubRoute "sass/" (const "css/")
             compile (compressCssItem <$> sassCompiler)
 
+        -- Elm
         match "elm/*.elm" $ do
             route $ setExtension "js" `composeRoutes` gsubRoute "elm/" (const "js/")
             compile elmMake
 
-        tags <- buildTags "posts/*" (fromCapture "tags/*.html")
+        -- Tags
+        tags <- buildTags postsPattern (fromCapture "tags/*.html")
 
         match postsPattern $ do
             route $ setExtension "html"
@@ -80,11 +86,15 @@ main = do
             compile copyFileCompiler
 
         create ["archive.html"] $ do
+            let title = "Archive"
+
             route idRoute
             compile $ do
                 posts <- recentFirst =<< loadAll postsPattern
                 let archiveCtx =
-                        listField "posts" (postCtx tags) (return posts) `mappend`
+                        constField "title" title <>
+                        field "tags" (\_ -> renderTagList tags) <>
+                        listField "posts" (postCtx tags) (return posts) <>
                         defaultContext
 
                 makeItem ""
@@ -92,12 +102,28 @@ main = do
                     >>= loadAndApplyTemplate "templates/default.html" archiveCtx
                     >>= relativizeUrls
 
+        -- Post tags
+        tagsRules tags $ \tag pattern -> do
+            let title = "Posts tagged " ++ tag
+
+            -- Copied from posts, need to refactor
+            route $ setExtension "html"
+            compile $ do
+                posts <- recentFirst =<< loadAll pattern
+                let ctx = constField "title" title <>
+                            listField "posts" (postCtx tags) (return posts) <>
+                            defaultContext
+                makeItem ""
+                    >>= loadAndApplyTemplate "templates/archive.html" ctx
+                    >>= loadAndApplyTemplate "templates/default.html" ctx
+                    >>= relativizeUrls
+
         match "index.html" $ do
             route idRoute
             compile $ do
-                posts <- recentFirst =<< loadAll postsPattern
+                posts <- fmap (take 3) . recentFirst =<< loadAll postsPattern
                 let indexCtx =
-                        listField "posts" (postCtx tags) (return posts) `mappend`
+                        listField "posts" (postCtx tags) (return posts) <>
                         defaultContext
 
                 getResourceBody

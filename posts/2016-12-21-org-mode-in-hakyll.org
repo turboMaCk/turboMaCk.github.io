@@ -3,7 +3,7 @@ title: Org Mode in Hakyll
 subtitle: The Ultimate Toolkit for Publishing?
 description: Testing Pandoc's org to HTML compilation.
 reddit: r/emacs/comments/5jjnri/org_mode_in_hakyll
-tags: Emacs, org-mode, Haskell, Hakyll, Pandoc, literate programming, reproducible research
+tags: emacs, haskell
 ---
 
 As an [[https://gnu.org/software/emacs/][Emacs]] user I'm really glad that I can benefit from full power of [[http://pandoc.org][Pandoc]] thanks to [[https://jaspervdj.be/hakyll/][Hakyll]] while creating this site.

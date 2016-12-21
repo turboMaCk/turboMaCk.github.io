@@ -1,4 +1,9 @@
-Here you can find all my previous posts:
+$if(tags)$
+    <div class="tags"><p>Tags: $tags$</p></div>
+$else$
+    <p><a href="/archive.html">Show all posts</a>
+$endif$
+
 $for(posts)$
     <article class="post">
         <header class="post-head">

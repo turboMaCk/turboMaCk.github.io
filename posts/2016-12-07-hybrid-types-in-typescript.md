@@ -3,7 +3,7 @@ title: Hybrid Types in TypeScript
 subtitle: Being Dynamic With Type Checker
 description: Using functions with custom interfaces in TypeScript
 reddit: r/typescript/comments/5h15an/hybrid_types_in_typescript
-tags: TypeScript, JavaScript, D3.js
+tags: typescript, javascript, d3.js
 ---
 
 Yesterday I've been refactoring one of our internal library in [GWI](globalwebindex.net) from JavaScript to TypeScript.
@@ -24,7 +24,7 @@ First let me explain one thing. I'm not writing TypeScript day to day. But when 
 I'm writing a lot of ES 2015 ECMAScript in work and [Elm](elm-lang.org) for fun (what is slowly changing since we already shipped first
 feature written in Elm elm as part of our production [Ember.js](ember.js) app).
 
-## Problem
+# Problem
 
 The idea is this. We have got our internal system for charts written in [D3.js](https://d3js.org/). Some parts of this are
 [open-sourced and available on GitHub](https://github.com/GlobalWebIndex/d3scription). In GWI we have got whole charts written in pure D3 that
