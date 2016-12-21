@@ -3,6 +3,7 @@ title: Hybrid Types in TypeScript
 subtitle: Being Dynamic With Type Checker
 description: Using functions with custom interfaces in TypeScript
 reddit: r/typescript/comments/5h15an/hybrid_types_in_typescript
+tags: TypeScript, JavaScript, D3.js
 ---
 
 Yesterday I've been refactoring one of our internal library in [GWI](globalwebindex.net) from JavaScript to TypeScript.

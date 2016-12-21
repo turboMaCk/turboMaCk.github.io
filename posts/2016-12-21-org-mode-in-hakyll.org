@@ -2,6 +2,7 @@
 title: Org Mode in Hakyll
 subtitle: The Ultimate Toolkit for Publishing?
 description: Testing Pandoc's org to HTML compilation.
+reddit: r/emacs/comments/5jjnri/org_mode_in_hakyll
 tags: Emacs, org-mode, Haskell, Hakyll, Pandoc, literate programming, reproducible research
 ---
 
@@ -158,4 +159,10 @@ Org mode is amazing. So is Hakyll & Pandoc.
 #+KEY:     fig
 [[http://media.riffsy.com/images/f8534774b678ad1932b379a03460680b/raw]]
 
-Images are included as links, not embedded.
+Images has to have extension like:
+
+[[../assets/reddit.png]]
+
+then it can be loaded even from other origin..
+
+[[http://45.media.tumblr.com/270992d792c9899f79888a8ea6955ca5/tumblr_o0jt792qLd1r83d7lo6_540.gif]]
