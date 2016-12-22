@@ -57,7 +57,7 @@ That said I think we can agree that:
 - `exactAxis()` returns `function` (and **functions are Objects in JavaScript**) with all methods defined.
 - Each method will return object it's called on (so we can chain method calls).
 
-## Interface
+# Interface
 
 Now we know what we need so lets define interface for out `exactAxis` function.
 
@@ -99,7 +99,7 @@ OK this is better. Now it's obvious that we are passing some data around.
 There are still some `any` used for d3 parts but I think we can leave it.
 
 
-## So Called Hybrid Types in TS
+# So Called Hybrid Types in TS
 
 Now we can actually start implementing our axis component. This was the part I was not familiar till yesterday.
 I was actually asking some friends who work with typescript daily how an interface like this can be implemented in typescript
@@ -252,7 +252,7 @@ to get element in d3's `each` method. It doesn't make sense to go against librar
 line tick (without text) in middle of ticks with text. However I think this simpler example is better for purpose of this
 article.*
 
-## Don't Drink Too Much Kool-Aid
+# Don't Drink Too Much Kool-Aid
 
 TypeScript maybe lets you express these kind of dynamic APIs but there is down side to it.
 If you remove implementation for any method compiler won't complain even though your function

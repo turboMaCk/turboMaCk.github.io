@@ -166,3 +166,11 @@ Images has to have extension like:
 then it can be loaded even from other origin..
 
 [[http://45.media.tumblr.com/270992d792c9899f79888a8ea6955ca5/tumblr_o0jt792qLd1r83d7lo6_540.gif]]
+
+* Description List
+
+- Frodo :: The hobbit ringbearer
+- Aragorn :: The human ranger, true kind of Gondor
+- Gandalf :: The Grey Wizard
+
+creddits to [[nihilmancer][https://www.reddit.com/user/nihilmancer]]
