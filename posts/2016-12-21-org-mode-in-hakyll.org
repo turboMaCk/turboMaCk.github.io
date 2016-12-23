@@ -174,3 +174,9 @@ then it can be loaded even from other origin..
 - Gandalf :: The Grey Wizard
 
 creddits to [[nihilmancer][https://www.reddit.com/user/nihilmancer]]
+
+* Footnotes
+
+This has some[fn:1] foot note.
+
+[fn:1] The link is: http://orgmode.org

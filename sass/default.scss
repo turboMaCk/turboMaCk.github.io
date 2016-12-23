@@ -113,6 +113,19 @@ table {
     }
 }
 
+.footnoteRef {
+    border-bottom: none;
+}
+
+.footnotes {
+    color: $grey_color;
+    margin-top: 40px;
+
+    p, ol {
+        margin: 5px 0;
+    }
+}
+
 .subtitle {
     display: block;
     color: $grey_color;
