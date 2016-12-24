@@ -75,7 +75,6 @@ main = do
 
     hakyllWith hakyllConf $ do
 
-
         -- Assets
         match "assets/*" $ do
             route idRoute
