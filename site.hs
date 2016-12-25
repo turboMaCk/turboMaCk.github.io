@@ -7,7 +7,6 @@ import Control.Monad (when)
 import Hakyll
 import Hakyll.Contrib.Elm
 import Hakyll.Web.Sass (sassCompiler)
-import Text.Pandoc
 
 --------------------------------------------------------------------------------
 
@@ -81,7 +80,7 @@ main = do
             compile copyFileCompiler
 
         -- Styles (SASS)
-        match "sass/*" $ do
+        match "sass/default.scss" $ do
             route $ setExtension "css" `composeRoutes` gsubRoute "sass/" (const "css/")
             compile (compressCssItem <$> sassCompiler)
 

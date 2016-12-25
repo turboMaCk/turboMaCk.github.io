@@ -1,9 +1,14 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE Rank2Types #-}
+
 import System.Directory
 import System.Environment
 import System.IO (hPutStrLn, stderr)
-import Distribution.Verbosity (normal)
+import Control.Monad (when)
 
--- This is really only spike of how similar script should work
+
+-- Settings
+
 
 directories :: [FilePath]
 directories = ["css", "js", "posts", "tags"]
@@ -14,50 +19,53 @@ files = ["index.html", "archive.html", "rss.xml", "favicon.png"]
 distributionLocation :: FilePath
 distributionLocation = "_site"
 
-removeDirIfExists :: FilePath -> IO ()
-removeDirIfExists path = do
-    exists <- doesDirectoryExist path
-    if exists
-    then do
-        removeDirectoryRecursive path
-    else
-        return ()
 
-moveDirIfExists :: FilePath -> FilePath -> IO ()
-moveDirIfExists source target = do
-    -- TODO: do not use do notation
-    exists <- doesDirectoryExist source
-    if exists
-    then do
-        renameDirectory source target
-    else
-        return ()
+-- Utils
 
-moveFileIfExists :: FilePath -> FilePath -> IO ()
-moveFileIfExists source target = do
-    -- TODO: do not use do notation
-    exists <- doesFileExist source
-    if exists
-    then do
-        renameFile source target
-    else
-        return ()
 
 getAbsolutePath :: FilePath -> FilePath -> FilePath
-getAbsolutePath root =
-  (++) $ root ++ "/"
+getAbsolutePath root = (++) $ root ++ "/"
+
+-- mappendIf :: forall (m :: * -> *). Monad m => m Bool -> m () -> m ()
+mappendIf :: IO Bool -> (() -> IO ()) -> IO ()
+mappendIf check action =
+    check >>= (\ b -> when b $ action ())
+
+removeDirIfExists :: FilePath -> IO ()
+removeDirIfExists path =
+    doesDirectoryExist path `mappendIf` \() -> removeDirectoryRecursive path
+
+moveDirIfExists :: FilePath -> FilePath -> IO ()
+moveDirIfExists source target =
+    doesDirectoryExist source `mappendIf` \() -> renameDirectory source target
+
+moveFileIfExists :: FilePath -> FilePath -> IO ()
+moveFileIfExists source target =
+    doesFileExist source `mappendIf` \() -> renameFile source target
+
+
+-- Main actions
+
 
 moveFiles :: FilePath -> FilePath -> IO ()
-moveFiles source target = do
-    -- This needs serious refactoring
-    mapM_ (\ d -> moveDirIfExists (getAbsolutePath source d) (getAbsolutePath target d)) directories
-    mapM_ (\ d -> moveFileIfExists (getAbsolutePath source d) (getAbsolutePath target d)) files
+moveFiles source target =
+    let source_ d =
+            getAbsolutePath source d
+        target_ d =
+            getAbsolutePath target d
+        moveDirIfExists_ d =
+            moveDirIfExists (source_ d) (target_ d)
+        moveFileIfExists_ d =
+            moveFileIfExists (source_ d) (target_ d)
+
+    in
+        mapM_ moveDirIfExists_ directories `mappend`
+        mapM_ moveFileIfExists_ files
 
 perform :: FilePath -> IO ()
-perform currentDir = do
-    _ <- mapM_ removeDirIfExists directories
+perform currentDir =
+    mapM_ removeDirIfExists directories `mappend`
     moveFiles distributionLocation currentDir
-
 
 main :: IO ()
 main = do
