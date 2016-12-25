@@ -11,10 +11,10 @@ import Control.Monad (when)
 
 
 directories :: [FilePath]
-directories = ["css", "js", "posts", "tags"]
+directories = ["css", "js", "posts", "tags", "assets"]
 
 files :: [FilePath]
-files = ["index.html", "archive.html", "rss.xml", "favicon.png"]
+files = ["index.html", "archive.html", "rss.xml", "favicon.png", "nonsense"]
 
 distributionLocation :: FilePath
 distributionLocation = "_site"
@@ -27,21 +27,21 @@ getAbsolutePath :: FilePath -> FilePath -> FilePath
 getAbsolutePath root = (++) $ root ++ "/"
 
 -- mappendIf :: forall (m :: * -> *). Monad m => m Bool -> m () -> m ()
-mappendIf :: IO Bool -> (() -> IO ()) -> IO ()
+mappendIf :: IO Bool -> IO () -> IO ()
 mappendIf check action =
-    check >>= (\ b -> when b $ action ())
+    check >>= (\ b -> when b $ action)
 
 removeDirIfExists :: FilePath -> IO ()
 removeDirIfExists path =
-    doesDirectoryExist path `mappendIf` \() -> removeDirectoryRecursive path
+    doesDirectoryExist path `mappendIf` removeDirectoryRecursive path
 
 moveDirIfExists :: FilePath -> FilePath -> IO ()
 moveDirIfExists source target =
-    doesDirectoryExist source `mappendIf` \() -> renameDirectory source target
+    doesDirectoryExist source `mappendIf` renameDirectory source target
 
 moveFileIfExists :: FilePath -> FilePath -> IO ()
 moveFileIfExists source target =
-    doesFileExist source `mappendIf` \() -> renameFile source target
+    doesFileExist source `mappendIf` renameFile source target
 
 
 -- Main actions
