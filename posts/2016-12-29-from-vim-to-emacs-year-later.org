@@ -1,5 +1,5 @@
 ---
-title: From Org to Emacs - Year Later
+title: From Vim to Emacs - Year Later
 subtitle: Bit Of Retrospective On What I Came Through
 description: There are many tutorials and articles about how to start with Emacs or how to switch to it from Vim. This is neither of these.
 tags: emacs
