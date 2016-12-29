@@ -137,6 +137,6 @@ You know what is important to you, don't you?
 [fn:2] Again there are dozens of examples about this topic.
 - Perry Metzger - The Editor of The Lifetime talk https://www.youtube.com/watch?v=VADudzQGvU8
 
-[fn:3] Actually Vim also supports plugins written in Python and other languages but these simply doesn't feel like first class citizens.
+[fn:3] Actually Vim also supports plugins written in Python and other languages but these simply don't feel like first class citizens.
 
 [fn:4] Check navigate.el for integration with Tmux. https://github.com/keith/evil-tmux-navigator
