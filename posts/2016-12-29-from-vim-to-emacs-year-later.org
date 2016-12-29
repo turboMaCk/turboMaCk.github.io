@@ -9,13 +9,13 @@ tags: emacs
 
 It's been about a year since I've switched from my highly customized vim to Emacs as a default editor.
 I have to admit it I had sometimes pretty tough times with Emacs especially at the beginnings.
-You can imagine someone who gets so much used to his customized setup in one environment to sometimes
-feel frustrated while making switch and starting new setup from scratch.
+As you can imagine someone who gets so much used to his customized setup in one environment has to
+feel frustrated while switching and starting new setup from scratch.
 Anyway at the same time I've found it really beneficial and I believe it helped me reevaluate a lot of
-thoughts on how interaction with computer and tools in general.
+thoughts on how interaction with computer and tools in general might look.
 This article isn't meant in any sense to be tutorial to neither Emacs nor Vim but is rather
-a reasoning about my experience and recapitulation of what I've learned during last year in this sense.
-Can it really help someone? I don't know. But I still feel it's worth putting these ideas down.
+a reasoning about my experience and recapitulation of what I've learned during last year.
+Can it really help someone? I don't know. But I still feel it's worth putting those ideas down.
 
 * Why Would Anyone Possibly Want To Do This?
 
