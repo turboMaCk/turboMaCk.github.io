@@ -1,0 +1,133 @@
+---
+title: Deep Dive To (Tail) Recursion - 1 Intro
+subtitle: Recursion as one (if no the most) of important concepts.
+description: Let's talk about what you should know before and understand about recursion in context of program.
+tags: functional programming, haskell, javascript
+---
+
+From time to time someone raises concern about performance of recursive algorithms in some of many conversations I have with my colleagues,
+friends or folks I meet on local meetups. Even though this might seem to be clear to people with certain level of functional programming experience it's certainly not generally well understood topic.
+I've found that there is a lot of confusion going around and some folks seems to be pretty scared when you pull all that weird terminology right of the box.
+This is why I still think it's worth spending some time exploring what recursion and tail recursion really means and how you can use both in practice.
+
+* Recursion
+
+Recursion can be found in many areas of mathematics and computer science. There are some examples:
+
+*** Shell
+
+#+BEGIN_SRC shell
+  rm -r folder_name
+#+END_SRC
+
+where ~-r~ means apply command ~rm~ recursively to all sub files and sub folders.
+
+*** Algorithms
+
+#+BEGIN_SRC javascript
+  function length(arr) {
+      if (!arr[0]) {
+          return 0;
+      }
+      arr.pop();
+
+      return 1 + length(arr);
+  }
+#+END_SRC
+
+where function contains call to itself.
+
+*Note:* ~length()~ implementation is just used for demonstration purposes. Please don't try to use it in real world!
+There are many problems with the code above. Performance will be really bad and also function will cause mutations
+in original array which becomes empty after being passed to the function due to ~pop()~ call! If you thinking about
+using something similar in your code base ~fuckUpLength~ would be probably better name for such function.
+
+*** Algebraic Data Types
+
+#+BEGIN_SRC haskell
+  data RoseTree a = Node a [RoseTree a]
+#+END_SRC
+
+where type definition might be recursive (type containing itself)
+
+*** Sequences
+
+For instance our friend Fibonacci
+
+\[ \begin{align*}
+  F_0 &= 0, \\
+  F_1 &= 1, \\
+  F_n &= F_{n-1} + F_{n-2}
+\end{align*}
+\]
+
+where fibonnaci n is define in terms of fibbonaci n-1 and fibbonaci n-2.
+
+*** Yo man I heard you like...
+
+Even though these tree might seem completely unrelated it's super important that underlaying concept is same.
+
+Let's use ~rm~ example for instance. This command executes itself for every sub-folder of folder it's executed.
+This simple principle allows ~rm~ to work with any depth of directories in file system.
+More generally then *recursion is property of self-reference*. Acronym "GNU" Gnu's Not Unix is refering to itself (G stays for GNU itself).
+Therefor we call such acronym [[https://en.wikipedia.org/wiki/Recursive_acronym][recursive acronym]].
+
+You can have a look at [[https://en.wikipedia.org/wiki/Recursion][wikipedia]] where you can find more in case you're interested.
+
+[[http://s2.quickmeme.com/img/a7/a764b1ed93f5fae80373f990de499c79ef0e2b0b3f950cb6b42ed9294de3b947.jpg]]
+
+* Loops
+
+Loops are fairly popular technique which is used in place of recursion in many programs.
+It's quite important to understand that loops are workaround for underlaying recursive nature of program or algorithm.
+The idea is simple - instead of dealing with function calling itself we loop sequence of "instructions" over data.
+In some sense loops are just restrictive abstraction over ~GOTO~ but core idea stays same.
+Program checks some condition (like ~i < arr.length~) proceed some instructions,
+apply some mutation to data it started with (eg. ~i++~) and ~GOTO~ condition again to either executes instructions with new state or exists subroutine if condition is not satisfied.
+
+This solves problem with stack overflow - function can't return (exit)
+until all its sub-calls (recursive calls) return) and is generally much closer to what we want hardware to do than recursion itself.
+Let's rewrite ~length()~ implementation from previous examples using loop.
+
+#+BEGIN_SRC javascript
+  function length(arr) {
+      var len = 0;
+      while(arr[0]) {
+        len++;
+        arr.pop()
+      }
+
+      return len;
+  }
+#+END_SRC
+
+*Note:* Even this implementation of length is bad. Function still performs mutation on array using ~pop()~.
+Please do not use such code for anything but learning.
+
+Loops are so widely used technique that many programmers kind of defaults to it. This is probably because most widely used
+languages derives more or less from C (think about C++, Java, C#, JavaScript...). Anyway I would say this is huge tradeoff.
+Translating algorithm for machine is hard and when people writing programs starts to think as machine they quite often miss general logic in program.
+Even it might seems easier to use loops over recursion to most developers it's definitely not easier when it comes
+to more complex algorithms or understanding large systems.
+
+There is so many things that can go wrong in simple ~for~ loop that it is even not worth to list them.
+Concept of loops also heavily relies on mutations which are hard to deal with especially when concurrency (in multithreaded environment) is involved.
+This is nothing new. Even imperative languages introduced many concepts to address issues like this
+like for example [[https://en.wikipedia.org/wiki/Iterator][iterators]] which I'm not really going to cover in this article but
+you can find tons of material about them on [[https://duckduckgo.com/?q=iterator][the internet]].
+
+Nevertheless I still think that recursion over power any other concept and should be the thing we defaults to instinctively when thinking about problem.
+
+Even most [[https://en.wikipedia.org/wiki/Dynamic_programming][dynamic programming]] practices often starts with recursive definition and translates that implementation to loop just to gain better performance characteristics later.
+
+*Note:* In case you're interested learning more about dynamic programming I recommend to look at [[https://www.youtube.com/watch?v=OQ5jsbhAv_M&list=PLfMspJ0TLR5HRFu2kLh3U4mvStMO8QURm][MIT's public Introduction to Algorithms]].
+
+There is still one issue using technique like dynamic programming in my opinion. Once you optimize code to loops
+it's stay that way. This means every time you or anyone else will need to tweak something in you're code youl'll need to walk through
+code you was no able to put down from head in first place. You can imagine this won't be pleasing experience.
+Wouldn't it be nice to have recursive implementation and hand optimization to compiler instead?
+
+Good news folks! There are compilers capable of such optimization out there! The only requirement on your side
+is to keep your implementation [[https://en.wikipedia.org/wiki/Tail_call][tail recursive]]!
+
+We will look what this mean and how you can use it in next part. Till then let force be with you my friends.

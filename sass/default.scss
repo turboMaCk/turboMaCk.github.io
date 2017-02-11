@@ -38,7 +38,10 @@ h2 {
 }
 
 pre {
-    &.sourceCode {
+    &.sourceCode,
+    &.shell,
+    &.txt,
+    &.rundoc-block {
         border: 1px dashed lighten($highlight_color, 20%);
         font-size: 14px;
         line-height: 1.3rem;
