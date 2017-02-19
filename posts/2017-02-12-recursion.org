@@ -1,12 +1,12 @@
 ---
 title: Deep Dive To (Tail) Recursion - 1 Intro
 subtitle: Recursion as one (if no the most) of important concepts.
-description: Let's talk about what you should know before and understand about recursion in context of program.
+description: Why I believe recursion is one of most important concepts we have.
 tags: functional programming, haskell, javascript
 ---
 
 From time to time someone raises concern about performance of recursive algorithms in some of many conversations I have with my colleagues,
-friends or folks I meet on local meetups. Even though this might seem to be clear to people with certain level of functional programming experience it's certainly not generally well understood topic.
+friends and folks from local meetup groups. Even though this might seem to be clear to people with certain level of functional programming experience it's certainly not generally well understood topic.
 I've found that there is a lot of confusion going around and some folks seems to be pretty scared when you pull all that weird terminology right of the box.
 This is why I still think it's worth spending some time exploring what recursion and tail recursion really means and how you can use both in practice.
 
@@ -65,12 +65,13 @@ where fibonnaci n is define in terms of fibbonaci n-1 and fibbonaci n-2.
 
 *** Yo man I heard you like...
 
-Even though these tree might seem completely unrelated it's super important that underlaying concept is same.
+Even though these three might seem completely unrelated it's super important to understand that underlaying concept is same.
 
 Let's use ~rm~ example for instance. This command executes itself for every sub-folder of folder it's executed.
 This simple principle allows ~rm~ to work with any depth of directories in file system.
-More generally then *recursion is property of self-reference*. Acronym "GNU" Gnu's Not Unix is refering to itself (G stays for GNU itself).
-Therefor we call such acronym [[https://en.wikipedia.org/wiki/Recursive_acronym][recursive acronym]].
+
+More generally *recursion is property of self-reference*. Acronym "GNU" Gnu's Not Unix is refering to itself (G stays for GNU itself).
+Therefore we call such acronym [[https://en.wikipedia.org/wiki/Recursive_acronym][recursive acronym]].
 
 You can have a look at [[https://en.wikipedia.org/wiki/Recursion][wikipedia]] where you can find more in case you're interested.
 
@@ -78,7 +79,7 @@ You can have a look at [[https://en.wikipedia.org/wiki/Recursion][wikipedia]] wh
 
 * Loops
 
-Loops are fairly popular technique which is used in place of recursion in many programs.
+Loops are fairly popular technique used in place of recursion in many programs.
 It's quite important to understand that loops are workaround for underlaying recursive nature of program or algorithm.
 The idea is simple - instead of dealing with function calling itself we loop sequence of "instructions" over data.
 In some sense loops are just restrictive abstraction over ~GOTO~ but core idea stays same.
@@ -106,11 +107,12 @@ Please do not use such code for anything but learning.
 
 Loops are so widely used technique that many programmers kind of defaults to it. This is probably because most widely used
 languages derives more or less from C (think about C++, Java, C#, JavaScript...). Anyway I would say this is huge tradeoff.
-Translating algorithm for machine is hard and when people writing programs starts to think as machine they quite often miss general logic in program.
-Even it might seems easier to use loops over recursion to most developers it's definitely not easier when it comes
-to more complex algorithms or understanding large systems.
+Translating algorithm for machine is hard and when people writing programs starts to think as machine they quite often miss general logic in program
+(Tend to solves adhock cases here and there instead abstracting concepts to composable pieces).
+Even it might seem easier to use loops over recursion to most developers it's definitely not easier when it comes
+to more complex algorithms or design of large systems.
 
-There is so many things that can go wrong in simple ~for~ loop that it is even not worth to list them.
+There are so many things that can go wrong in simple ~for~ loop that it's even not worth trying to list them.
 Concept of loops also heavily relies on mutations which are hard to deal with especially when concurrency (in multithreaded environment) is involved.
 This is nothing new. Even imperative languages introduced many concepts to address issues like this
 like for example [[https://en.wikipedia.org/wiki/Iterator][iterators]] which I'm not really going to cover in this article but
