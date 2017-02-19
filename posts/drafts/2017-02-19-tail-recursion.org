@@ -1,0 +1,160 @@
+---
+title: Deeper Dive To (Tail) Recursion - 2 Tail Calls
+subtitle: How Your Head Calls Tail... Recursively
+description: Optimizing recursive functions using tail calls.
+---
+
+In [[https://turbomack.github.io/posts/2017-02-12-recursion.html][part #1]] of this series I tried to put down reasons why I think recursion is important.
+This time I would like to finally focus on *tail recursion* and what it means.
+
+*Note:* One occasion I've been explaining how tail recursion works was in hotel room with one of my friends and colleagues.
+Original conversation was about [Prolog](https://en.wikipedia.org/wiki/Prolog) therefore I've wrote original examples in Erlang (which has similar syntax).
+Anyway for purpose of this article I'll also try to add few examples in different languages to make it easier to follow for people with no Erlang/Prolog experience.
+
+* Tail Recursion
+
+If you looking of propriete definition of what tail recursion means have a look at [[https://en.wikipedia.org/wiki/Tail_call][wikipedia article]]. If you feel you understand this concept feel free to skip rest of this paragraph.
+To translate this definition to regular language we can go back to recursion itself. In previous we were talking about recursion if self reference - when speaking about functions
+we can simply say that it's a type of function which contains call to itself. One thing that might be confusing is term "tail recursion" itself.
+When speaking about recursion you often see examples wich works with linked list and especially in languages with [[https://en.wikipedia.org/wiki/Pattern_matching][pattern matching]] you will can see many references to ~tail~ of list.
+I intentionally used some such examples in previous article just to make it absolutelly clear later. *Tail recursion and tail of linked List are two completelly unrelated things*.
+Honestly I don't know where ~tail recursion~ name came from and even though I do believe there are some reasons for calling it tail I think it only causes confusion.
+Another missunderstanding I saw was folks thinking that every function containing recursive statement on literaly "last line" is tail recursive - It's not.
+Let's leave lazy languages like haskell aside and thing just about evaluation when you concat something to recursive call - You can't concat until recursion returns, right?
+*Tail recursive function is function where recursive call is verry last expression within that function*. This means that there is nothing left to do when recursion finish
+and result of recursive call is also result of parent scope. In such cases compilers can implement optimization so parent function "exits" and recursive calls takes it's place in stack
+(result of recursive call will be result of function). Almost like loop, right?
+
+There is also one other way I like to think about this - When function is tail recursive what it's actually doing is just calculating params for next recursive call until function can return final result.
+
+* Optimization
+
+One think that is worth mentioning that writing tail recursive code doesn't automatically mean that optimization takes place. Optimization step actually depends on
+compiler. Generally every language with decend functional support (by decent I mean every language that isn't necessary [[https://en.wikipedia.org/wiki/Pattern_matching][pure]] but claims to have at least partial functional paradigm support)
+has this optimization build-in. Also I would like to mention two bit controversial platforms. *JavaScript is not yet capable of such optimization* even despite promisses
+to add this to Ecma standard was made long time ago. However languages like purescript, elm ghc.js does this optimization in compile time for you.
+On JVM situation is quite simmilar. There [[https://www.youtube.com/watch?v=_ahvzDzKdB0][were attempts]] to support for such optimization to Java which are still actual. Yet Java do not support this.
+Anyway Scalac can optimize you're code in compile time (you need to add ~@tailrec~ annotation however). In clojure however there is construct called [[https://clojuredocs.org/clojure.core/recur][recur]] to work around this issue.
+
+* Writing Tail Recursive Code
+
+Rewriting recursive functions to be tail recursive may seem to be a bit hard at first. Anyway from my experience this is different from case to case and after some practice
+it might feel even simpler to think in tail recursion out of the box. However I agree this is not true for every recursive algorithm and sometimes it needs some effort.
+That say it might seem that some of my point in previous article about recursion being ultimate technique over loops were bit misleading.
+That say I still think complicated tail recursion is still more easy to understand and more importantly much easier to reason about than complex loops.
+
+** Examples
+
+Let's have a look on few examples of how we can turn recursive function to tail recursive one.
+
+*** Factorial
+
+This is basic implementation of [[https://en.wikipedia.org/wiki/Factorial][factorial]] in Erlang.
+
+#+BEGIN_SRC erlang
+-module(fac).
+
+-export([fac/1]).
+
+%% Basic recursive implementation of factorial
+fac(0) -> 1;
+fac(N) when N > 0 ->
+    N * fac(N - 1).
+#+END_SRC
+
+Obviously this implementation *is not* tail recursive. Last expression evaluated is ~*~ with ~N~ and result of recursive call ~fac(N - 1)~.
+Lets change that. To do so we will use another "private function" which will take one more argument. This argument is often called *accumulator* since it's
+used for storing intermediate results. Let's look of final implementation since it's most descriptive:
+
+#+BEGIN_SRC erlang
+-module(tail_fac).
+
+-export([tail_fac/1]).
+
+%% Tail recursive factorial - public function
+tail_fac(N) -> tail_fac(N, 1).
+
+%% Actual private tail recursive implementation
+tail_fac(0, Acc) -> Acc;
+tail_fac(N, Acc) when N > 0 ->
+    tail_fac(N - 1, N * Acc).
+#+END_SRC
+
+As you can see Erlang is good language for demonstration like this due to fact that function is [[http://stackoverflow.com/questions/21315927/why-does-erlang-have-arity-in-its-imports][define for particular arity]]. This mean we can use same name
+for function that takes one (~tail_fac/1~) and two (~tail_fac/2~) arguments and use them as they were completely different functions. Also we can export just on of them to other modules.
+
+Hope this is clear so we can have a look at algorithm itself. As you can see ~tail_fac/1~ just calls ~tail_fac/2~ with initial accumulator ~1~. We can this is just initialization of recursive call to ~tail_fac/2~.
+~tail_fac/2~ on the other hand returns ~Acc~ when ~N == 0~. The way I like to think about this is that we changed direction in which we compute factorial. Instead of calculating ~factorial_N~
+and calculating $factorial_{N-1}$, $factorial_{N-2}$... during that we do it other way around. We start by calculating $factorial_0$ and continue to $factorial_N$.
+In this context ~Acc~ is result of previous value and ~N~ is number of times we will continue calculating factorial for next values. If it's still not clear try to look at implementation
+one more time and keep in mind this:
+
+- ~N~ - number of times we need to calculate $factorial_{x}$
+- ~Acc~ - result of $factorial_{x-1}$
+
+*** Length
+
+Now let's have a look on length implementation. This is basic recursive implementation:
+
+#+BEGIN_SRC erlang
+-module(length).
+
+-export([length/1]).
+
+%% Basic implementation of length
+length([]) -> 0;
+length([_]) -> 1;
+length([_|T]) -> 1 + length(T).
+#+END_SRC
+
+Hey! This really looks much better than our previous attempt in JS (and also this is not broken). Let's make this tail recursive.
+
+#+BEGIN_SRC erlang
+-module(tail_length).
+
+-export([tail_length/1]).
+
+%% Tail recursive length - public function
+tail_length(L) -> tail_length(L, 0).
+
+%% Actual private tail recursive implementation
+tail_length([], _) -> 0;
+tail_length([_], Acc) -> Acc + 1;
+tail_length([_|T], Acc) -> tail_length(T, Acc + 1).
+#+END_SRC
+
+#+BEGIN_SRC haskell
+module Length(length) where
+
+length :: [a] -> Int
+length = length' 0
+
+length' :: Int -> [a] -> Int
+length' acc [] = acc
+length' acc (h:t) = length' (acc + 1) t
+#+END_SRC
+
+*** Fibonacci Number
+
+#+BEGIN_SRC erlang
+-module(fib).
+
+-export([fib/1]).
+
+fib(0) -> 0;
+fib(1) -> 1;
+fib(N) -> fib(N - 2) + fib(N - 1).
+#+END_SRC
+
+#+BEGIN_SRC erlang
+-module(tail_fib).
+
+-export([tail_fib/1]).
+
+tail_fib(0) -> 0;
+tail_fib(1) -> 1;
+tail_fib(N) -> tail_fib(N - 2, 0, 1).
+
+tail_fib(0, Acc1, Acc2) -> Acc1 + Acc2;
+tail_fib(N, Acc1, Acc2) -> tail_fib(N - 1, Acc2, Acc1 + Acc2)
+#+END_SRC
