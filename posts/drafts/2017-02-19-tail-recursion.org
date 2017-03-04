@@ -2,13 +2,14 @@
 title: Deeper Dive To (Tail) Recursion - 2 Tail Calls
 subtitle: How Your Head Calls Tail... Recursively
 description: Optimizing recursive functions using tail calls.
+tags: functional programming, haskell, erlang
 ---
 
 In [[https://turbomack.github.io/posts/2017-02-12-recursion.html][part #1]] of this series I tried to put down reasons why I think recursion is important.
 This time I would like to finally focus on *tail recursion* and what it means.
 
 *Note:* One occasion I've been explaining how tail recursion works was in hotel room with one of my friends and colleagues.
-Original conversation was about [Prolog](https://en.wikipedia.org/wiki/Prolog) therefore I've wrote original examples in Erlang (which has similar syntax).
+Original conversation was about [[https://en.wikipedia.org/wiki/Prolog][Prolog]] therefore I've wrote original examples in Erlang (which has similar syntax).
 Anyway for purpose of this article I'll also try to add few examples in different languages to make it easier to follow for people with no Erlang/Prolog experience.
 
 * Tail Recursion
@@ -107,7 +108,11 @@ length([_]) -> 1;
 length([_|T]) -> 1 + length(T).
 #+END_SRC
 
-Hey! This really looks much better than our previous attempt in JS (and also this is not broken). Let's make this tail recursive.
+Hey! This really looks much better than our previous attempt in JS (and also this is not broken).
+How this works? Simply - for empty list (btw [] is List in Erlang if I haven't mention this before) is 0.
+For list with just one element the length is 1. For any other list it's 1 + length of previous list.
+Say we have list like ~[1,2,3]~. length of this list is ~1 + (length([2,3]))~ -> ~1 + (1 + length([3]))~ -> ~1 + (1 + 1)~ -> ~1 + 2~ -> ~3~.
+Let's make this tail recursive.
 
 #+BEGIN_SRC erlang
 -module(tail_length).
@@ -123,6 +128,32 @@ tail_length([_], Acc) -> Acc + 1;
 tail_length([_|T], Acc) -> tail_length(T, Acc + 1).
 #+END_SRC
 
+Once again I like to think about this as like calculation from other end.
+In previous example we calculate length of 3 element list by constructing expression containing sub expression of length calculation for each tail and evaluating it.
+There is certainly nothing bad about it from mathematical point of view. However our machines have certain attributes and limitations and in such implementation
+there is no way to know result for expression until all recursive calls are evaluated.
+How tail recursive implementation works? Instead of calculating length of list's tail first we calculate lenght of heads and continue by adding lenght of next head
+up to the point there is nothing left. If this sound confusing don't worry. Just let's follow this computation with me.
+Again we have list ~[1,2,3]~. ~tail_length/1~ acts just like public interface for our private implementation so actual call is to ~tail_lenght/2~ which looks like
+~tail_length([1,2,3], 0)~. What we do is to calculate length up to this point by adding intermediate (Acc) result to result for head - ~0 + 1~. Zero is our starting point.
+Since we didn't calculate lenght for any element yet we pass 0 manually (you can think this value as length of empty list if you wish).
+Ok so length of heads up to this point is ~1~ (0 + 1) and then we need calculate length of tail so next call is ~tail_length([2,3], 1)~.
+See that this there is nothing we have wait for? Result of this expression will be exactly result of recursive call. This is why compiler is able to optimize this under the hood.
+Let's continue. Next call will look like this ~tail_length([3], 1 + 1)~ -> ~tail_length([3], 2)~ because length of head is always one and we just need to add it to intermediate result of previous length.
+And finally last call match 2 cause like ~2 + 1~ which is ~3~. And this is our result.
+
+*Note:* You can see I'm using term ~tail~ a lot. In fact this has nothing to do with tail-recursion itself but rather with list we are using in these examples.
+This might be a bit confusing but even though recursion is common while processing lists it's really not the only place where we are speaking about recursion.
+This is also why I chose factorial as first example.
+
+So far we have 2 nice little examples of tail recursion in Erlang. However you can easily transform all of this to any other language
+(even to one which has no tail recursive optimization build in if you want - but don't expect any better characteristics than).
+Of course every language has it's own specifics. Let's have a look of possible Haskell implementation.
+Notice that Haskell's pattern matching is slightly different. In Erlang there are 3 patterns to match list - ~[]~ for empty list (nil),
+~[x]~ for list with one element and ~[H|T]~ for list with more elements (Head and Tail).
+In Haskell you need just 2 patterns since list with one element is list with head and empty list as tail ~head:[]~.
+Whit this in mind lets have a look at actual code.
+
 #+BEGIN_SRC haskell
 module Length(length) where
 
@@ -134,7 +165,29 @@ length' acc [] = acc
 length' acc (h:t) = length' (acc + 1) t
 #+END_SRC
 
+You can notice few other differences. We are using prime (~'~) in name of private function. Also the order of arguments is different.
+This is also quite important difference since Haskell uses [[https://en.wikipedia.org/wiki/Currying][currying]]. This is nice example of how language features might affect the way you design your API
+to make its usage convenient. However we're not hear to speak about nether language features nor currying so look for different places if you're interested to learn more about this.
+
+Recursive functions for data-structures like list have one interesting property.
+There is really a lot of useful functions like ~map~, ~filter~, ~length~, ~zip~, ~sum~ and similar.
+What they have in common? Try to think about possible implementation. You always initialize them with some value.
+This value also have same time of result of recursive call. And then you go over all elements in data-structure.
+In fact this pattern is so common that it has it's own name and abstraction if almost every language (at least one with higher order functions).
+This is called [[https://en.wikipedia.org/wiki/Fold_(higher-order_function)][folding]]. You might know this as ~folder~ ~foldl~ or ~reduce~ function in your language.
+Also you're maybe familiar with fancy buzzword like [[https://en.wikipedia.org/wiki/MapReduce][MapReduce]]. Funny fact - Map is just one specific reducing function.
+Term map reduce is like saying AdditionComputetion or PaintinbluePaintingcolors. I think this is a bit funny. Anyway this name makes some sense
+since due to distributed nature of such systems Map is the only type of reducer you can run in parallel on multiple nodes and then you can do reduce step on all collected data.
+Anyway this still illustrates how crucial is to be seeking for general understanding rather than buzz words even though their our the seller in our industry.
+You can learn Java programming language(TM) (actually this is whole official name so never say just Java again!) to be able to write programs in Java.
+Or you can learn general Mathematical principles you will be able to apply no matter what technology your employer chose to use.
+
+Next (and last) part of these series I want to dedicate just to folding. Anyway for now let me show you one more example.
+On this example I want to demonstrate how to solve something we don't need to solve in any other previous examples.
+
 *** Fibonacci Number
+
+Fibonacci numbers are highly overused example for recursive algorithms. Probably because it's so elegant equation.
 
 #+BEGIN_SRC erlang
 -module(fib).
@@ -145,6 +198,36 @@ fib(0) -> 0;
 fib(1) -> 1;
 fib(N) -> fib(N - 2) + fib(N - 1).
 #+END_SRC
+
+and most of the slides on conferences ends right here. For example like [[http://www.youtube.com/watch?v=5hDVftaPQwY&t=7m15s][this one]] by "Pragmatic Dave Thomas".
+
+I really don't want to undermine mr. Thomas in any way but let me just show Ruby implementation of this:
+
+#+BEGIN_SRC ruby
+  def fib(n)
+    return 0 if n == 0
+    return 1 if n == 1
+    fib(n-1) + fib(n-2)
+  end
+#+END_SRC
+
+Doesn't look so different to me. Even though more ruby like implementation would be probably:
+
+#+BEGIN_SRC ruby
+class Integer
+  def fib
+    return 0 if self == 0
+    return 1 if self == 1
+    (self - 1).fib + (self - 2).fib
+  end
+end
+#+END_SRC
+
+So then you can use it like ~10.fib => 55~.
+
+Anyway the reason I'm showing you Fibonacci number is because you need to know 2 previous results to calculate next number in sequence.
+It turned out that a lot of people found it difficult to transform this to tail recursive implementation.
+In fact it's fairly simple! Just use two accumulators instead of one!
 
 #+BEGIN_SRC erlang
 -module(tail_fib).
@@ -158,3 +241,16 @@ tail_fib(N) -> tail_fib(N - 2, 0, 1).
 tail_fib(0, Acc1, Acc2) -> Acc1 + Acc2;
 tail_fib(N, Acc1, Acc2) -> tail_fib(N - 1, Acc2, Acc1 + Acc2)
 #+END_SRC
+
+That's it! Principle is still same just applied to different problem. I'm not going to go through evaluation once again so take this as exam if you want to understand.
+
+* Final thoughts
+
+I hope now you have better understanding what tail recursion is, how it works and how to write your own tail recursive functions.
+However in most case you don't really need to implement everything we did in this article. For instance our length function implementation
+can be done in much less code using things just simple level of abstraction like ~foldr~, ~foldl~ or ~reduce~.
+In fact this was original reason I've started writing these series. The truth is that most functional developers are already familiar with
+recursion and tail recursion. However in my daily job I still get in touch with Ruby, JavaScript and TypeScript pretty often and I still see
+that many developers are not familiar with ~reduce~ function in these languages and don't know how and when to use it.
+As a result they are looping over arrays like crazy even though they can express whole idea in one nice little reducer.
+Anyway more about this later in post that will be hopefully much shorter than this one.
