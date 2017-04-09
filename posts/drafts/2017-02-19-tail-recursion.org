@@ -5,44 +5,47 @@ description: Optimizing recursive functions using tail calls.
 tags: functional programming, haskell, erlang
 ---
 
-In [[https://turbomack.github.io/posts/2017-02-12-recursion.html][part #1]] of this series I tried to put down reasons why I think recursion is important.
-This time I would like to finally focus on *tail recursion* and what it means.
+In [[https://turbomack.github.io/posts/2017-02-12-recursion.html][part #1]] of this series I wrote about reasons why I think recursion is important and try to reevaluate on this topic a bit.
+This time I would like to finally focus on *tail recursion* itself.
 
-*Note:* One occasion I've been explaining how tail recursion works was in hotel room with one of my friends and colleagues.
-Original conversation was about [[https://en.wikipedia.org/wiki/Prolog][Prolog]] therefore I've wrote original examples in Erlang (which has similar syntax).
-Anyway for purpose of this article I'll also try to add few examples in different languages to make it easier to follow for people with no Erlang/Prolog experience.
+*Note:* One of occasions I've been discussing tail recursion was when I was staying in hotel in London with one of my colleagues.
+Original conversation we had was about [[https://en.wikipedia.org/wiki/Prolog][Prolog]] therefor I've wrote original examples in Erlang (since I don't know Prolog at all but know that Erlang's syntax is based on it).
+Anyway I'll also add few examples in different languages just to show how tail recursion looks like in different language.
 
 * Tail Recursion
 
-If you looking of propriete definition of what tail recursion means have a look at [[https://en.wikipedia.org/wiki/Tail_call][wikipedia article]]. If you feel you understand this concept feel free to skip rest of this paragraph.
-To translate this definition to regular language we can go back to recursion itself. In previous we were talking about recursion if self reference - when speaking about functions
-we can simply say that it's a type of function which contains call to itself. One thing that might be confusing is term "tail recursion" itself.
-When speaking about recursion you often see examples wich works with linked list and especially in languages with [[https://en.wikipedia.org/wiki/Pattern_matching][pattern matching]] you will can see many references to ~tail~ of list.
-I intentionally used some such examples in previous article just to make it absolutelly clear later. *Tail recursion and tail of linked List are two completelly unrelated things*.
-Honestly I don't know where ~tail recursion~ name came from and even though I do believe there are some reasons for calling it tail I think it only causes confusion.
-Another missunderstanding I saw was folks thinking that every function containing recursive statement on literaly "last line" is tail recursive - It's not.
-Let's leave lazy languages like haskell aside and thing just about evaluation when you concat something to recursive call - You can't concat until recursion returns, right?
-*Tail recursive function is function where recursive call is verry last expression within that function*. This means that there is nothing left to do when recursion finish
-and result of recursive call is also result of parent scope. In such cases compilers can implement optimization so parent function "exits" and recursive calls takes it's place in stack
-(result of recursive call will be result of function). Almost like loop, right?
+If you're interested in proper definition tail recursion have a look at [[https://en.wikipedia.org/wiki/Tail_call][wikipedia article]].
+To translate this definition to other language you might find easier to understand we can go back to recursion itself. In [[https://turbomack.github.io/posts/2017-02-12-recursion.html][previous part]] we said that recursion means self reference - speaking about functions
+we can simply say that it's function which calls itself internally. One thing that might be confusing is term "tail recursion" itself.
+In article about recursion we were often using functions for manipulating linked list. This makes sense because list is useful and simple recursive datastructure.
+However as you might know list are defined as being either empty (~nil~) or ~head cons tail~ where tail is other list (the one without head).
+I've intentionally used some examples using term (variable) ~tail~ in previous article just to make it clear that using tail of list doesn't automatically mean your implementation is tail recursive.
+*Tail recursion and tail of linked List are two completely unrelated things*.
+Honestly I don't know where ~tail recursion~ name comes from and even though I believe there are some reasons for calling it /tail/ I think it only causes confusion.
+Another misunderstanding I think is pretty often is folks thinking that every function containing recursive statement on literally "last line" is tail recursive - It's not.
+Let's leave lazy languages like haskell aside and think just about execution of something like ~length(list) = 1 + length(tail(list))~ - You can't add ~1~ before you calculate ~length(tail(list))~, right?
 
-There is also one other way I like to think about this - When function is tail recursive what it's actually doing is just calculating params for next recursive call until function can return final result.
+*Tail recursive function is function where recursive call is very last (from execution point of view) expression within that function*. This means that there is nothing left to do when recursion finish
+and result of recursive call is also result of parent scope (you don't need to do anything like `add 1` to result of recursive call).
+In such cases compilers can implement optimization so parent function "exits" and recursive calls takes its place in stack. Almost like loop, right?
+
+There is also one other way I like to think about this - Tail recursive is actually just calculating arguments for next recursive call until up to the point where it can calculate final result without any other recursive call.
 
 * Optimization
 
-One think that is worth mentioning that writing tail recursive code doesn't automatically mean that optimization takes place. Optimization step actually depends on
-compiler. Generally every language with decend functional support (by decent I mean every language that isn't necessary [[https://en.wikipedia.org/wiki/Pattern_matching][pure]] but claims to have at least partial functional paradigm support)
-has this optimization build-in. Also I would like to mention two bit controversial platforms. *JavaScript is not yet capable of such optimization* even despite promisses
-to add this to Ecma standard was made long time ago. However languages like purescript, elm ghc.js does this optimization in compile time for you.
-On JVM situation is quite simmilar. There [[https://www.youtube.com/watch?v=_ahvzDzKdB0][were attempts]] to support for such optimization to Java which are still actual. Yet Java do not support this.
-Anyway Scalac can optimize you're code in compile time (you need to add ~@tailrec~ annotation however). In clojure however there is construct called [[https://clojuredocs.org/clojure.core/recur][recur]] to work around this issue.
+One think worth mentioning is that writing tail recursive code doesn't automatically means that tail recursive optimization takes place. Optimization step depends on compiler.
+Generally every language with decent functional support (by decent I mean every language that isn't necessary [[https://en.wikipedia.org/wiki/Pattern_matching][pure]] but claims to have at least partial functional paradigm support)
+has this optimization build-in. Also I would like to mention two controversial platforms. *JavaScript is not yet capable of such optimization* even despite promises
+of including this to ECMA standard was made a long time ago. However languages like PureScript, Elm or ghcjs does this optimization in compile time for you (generated JS uses loops).
+On JVM situation is quite similar. There [[https://www.youtube.com/watch?v=_ahvzDzKdB0][were attempts]] to add this optimization to Java which are in some sense still actual. Yet JVM doesn't have this optimization yet.
+Scalac (Scala's compiler) can optimize you're code in compile time (you need to add ~@tailrec~ annotation). On the other hand Clojure has construct called [[https://clojuredocs.org/clojure.core/recur][recur]] to go around absence of support on VM level.
 
 * Writing Tail Recursive Code
 
-Rewriting recursive functions to be tail recursive may seem to be a bit hard at first. Anyway from my experience this is different from case to case and after some practice
-it might feel even simpler to think in tail recursion out of the box. However I agree this is not true for every recursive algorithm and sometimes it needs some effort.
-That say it might seem that some of my point in previous article about recursion being ultimate technique over loops were bit misleading.
-That say I still think complicated tail recursion is still more easy to understand and more importantly much easier to reason about than complex loops.
+Rewriting recursive functions to tail recursive ones may seem to be a bit hard at first. Anyway from my experience it might be different from case to case and after some practice (of brain)
+it might feel even simpler to think in tail recursion out of the box. However I agree this is not true for every recursive algorithm and sometimes it requires some effort.
+That say it might seem that some points I made in previous article about recursion being ultimate technique over loops were bit misleading.
+Honestly I still think complicated tail recursion is still easier to understand and more importantly much easier to reason about than complex loops.
 
 ** Examples
 
@@ -50,7 +53,7 @@ Let's have a look on few examples of how we can turn recursive function to tail 
 
 *** Factorial
 
-This is basic implementation of [[https://en.wikipedia.org/wiki/Factorial][factorial]] in Erlang.
+This is one if basic implementations of [[https://en.wikipedia.org/wiki/Factorial][factorial]] in Erlang.
 
 #+BEGIN_SRC erlang
 -module(fac).
@@ -65,7 +68,7 @@ fac(N) when N > 0 ->
 
 Obviously this implementation *is not* tail recursive. Last expression evaluated is ~*~ with ~N~ and result of recursive call ~fac(N - 1)~.
 Lets change that. To do so we will use another "private function" which will take one more argument. This argument is often called *accumulator* since it's
-used for storing intermediate results. Let's look of final implementation since it's most descriptive:
+used for storing intermediate results. Let's look of final implementation since it says more than thousand words.
 
 #+BEGIN_SRC erlang
 -module(tail_fac).
@@ -78,24 +81,36 @@ tail_fac(N) -> tail_fac(N, 1).
 %% Actual private tail recursive implementation
 tail_fac(0, Acc) -> Acc;
 tail_fac(N, Acc) when N > 0 ->
-    tail_fac(N - 1, N * Acc).
+    tail_fac(N - 1, Acc * N).
 #+END_SRC
 
-As you can see Erlang is good language for demonstration like this due to fact that function is [[http://stackoverflow.com/questions/21315927/why-does-erlang-have-arity-in-its-imports][define for particular arity]]. This mean we can use same name
-for function that takes one (~tail_fac/1~) and two (~tail_fac/2~) arguments and use them as they were completely different functions. Also we can export just on of them to other modules.
+As you can see Erlang is good fir for example like this due to fact that function is [[http://stackoverflow.com/questions/21315927/why-does-erlang-have-arity-in-its-imports][define for particular arity]]. This mean we can use same name
+for function that takes one (~tail_fac/1~) and two (~tail_fac/2~) arguments and use them as they were completely different functions. Also we can expose just one of them.
 
-Hope this is clear so we can have a look at algorithm itself. As you can see ~tail_fac/1~ just calls ~tail_fac/2~ with initial accumulator ~1~. We can this is just initialization of recursive call to ~tail_fac/2~.
-~tail_fac/2~ on the other hand returns ~Acc~ when ~N == 0~. The way I like to think about this is that we changed direction in which we compute factorial. Instead of calculating ~factorial_N~
-and calculating $factorial_{N-1}$, $factorial_{N-2}$... during that we do it other way around. We start by calculating $factorial_0$ and continue to $factorial_N$.
-In this context ~Acc~ is result of previous value and ~N~ is number of times we will continue calculating factorial for next values. If it's still not clear try to look at implementation
-one more time and keep in mind this:
+As you can see ~tail_fac/1~ just calls ~tail_fac/2~ with initial accumulator ~1~. We can say that this is just initialization for call to ~tail_fac/2~.
+~tail_fac/2~ on the other hand returns ~Acc~ when ~N == 0~. The way I like to think about this is that we've changed the direction in which we compute factorial.
+Instead of starting from ~1~ we start from ~N~. Let's say we're evaluating ~tail_fac(3)~. This calls ~tail_fac/2~ with ~N = 3~ and ~Acc = 0~.
+~N * Acc~ then is ~3 * 1~ which is ~3~. This is just "identity" of N so if we say ~3! = 3 * 2 * 1~ this calculates first just ~3~ as initial value.
+Also you can thing that what we actually did is rewrite factorial as ~3! = ((1 * 3) * 2) * 1)~ so each sub expression has 2 arguments.
+~N~ on the other hands keeps track of how many times we need to keep going.
+In next call ~N = 2~ and ~Acc = 3~. We call recursively one more time with ~N = 1~ and ~Acc = 3 * 2 = 6~. In next recursive call ~N = 0~ and ~Acc = 6 * 1 = 6~.
+Now we match first pattern (~tail_fac(0, Acc)~) and just return ~Acc~ which is our result - *6*.
 
-- ~N~ - number of times we need to calculate $factorial_{x}$
-- ~Acc~ - result of $factorial_{x-1}$
+As you can see we last call with ~N = 1~ is not necessary because ~n * 1 = n~. This means we can add small optimization to our code like:
+
+#+BEGIN_SRC erlang
+%% Actual private tail recursive implementation
+tail_fac(N, Acc) when N < 2 -> Acc;
+tail_fac(N, Acc) when N > 1 ->
+    tail_fac(N - 1, Acc * N).
+#+END_SRC
+
+so we can return on N = 1 without extra recursive call.
 
 *** Length
 
-Now let's have a look on length implementation. This is basic recursive implementation:
+Now let's have a look on length implementation. We already know this function for previous article.
+This is basic recursive implementation:
 
 #+BEGIN_SRC erlang
 -module(length).
@@ -108,7 +123,7 @@ length([_]) -> 1;
 length([_|T]) -> 1 + length(T).
 #+END_SRC
 
-Hey! This really looks much better than our previous attempt in JS (and also this is not broken).
+This really looks much better than our previous attempt in JS (and also this is not broken).
 How this works? Simply - for empty list (btw [] is List in Erlang if I haven't mention this before) is 0.
 For list with just one element the length is 1. For any other list it's 1 + length of previous list.
 Say we have list like ~[1,2,3]~. length of this list is ~1 + (length([2,3]))~ -> ~1 + (1 + length([3]))~ -> ~1 + (1 + 1)~ -> ~1 + 2~ -> ~3~.
@@ -129,30 +144,31 @@ tail_length([_|T], Acc) -> tail_length(T, Acc + 1).
 #+END_SRC
 
 Once again I like to think about this as like calculation from other end.
-In previous example we calculate length of 3 element list by constructing expression containing sub expression of length calculation for each tail and evaluating it.
-There is certainly nothing bad about it from mathematical point of view. However our machines have certain attributes and limitations and in such implementation
-there is no way to know result for expression until all recursive calls are evaluated.
+In previous example we calculated length of 3 element list by constructing expression containing sub expression of length calculation for each tail and evaluating it.
+There is certainly nothing bad about it from mathematical point of view. However our machines have certain attributes and limitations (like time and space).
 How tail recursive implementation works? Instead of calculating length of list's tail first we calculate lenght of heads and continue by adding lenght of next head
-up to the point there is nothing left. If this sound confusing don't worry. Just let's follow this computation with me.
-Again we have list ~[1,2,3]~. ~tail_length/1~ acts just like public interface for our private implementation so actual call is to ~tail_lenght/2~ which looks like
-~tail_length([1,2,3], 0)~. What we do is to calculate length up to this point by adding intermediate (Acc) result to result for head - ~0 + 1~. Zero is our starting point.
-Since we didn't calculate lenght for any element yet we pass 0 manually (you can think this value as length of empty list if you wish).
-Ok so length of heads up to this point is ~1~ (0 + 1) and then we need calculate length of tail so next call is ~tail_length([2,3], 1)~.
-See that this there is nothing we have wait for? Result of this expression will be exactly result of recursive call. This is why compiler is able to optimize this under the hood.
-Let's continue. Next call will look like this ~tail_length([3], 1 + 1)~ -> ~tail_length([3], 2)~ because length of head is always one and we just need to add it to intermediate result of previous length.
-And finally last call match 2 cause like ~2 + 1~ which is ~3~. And this is our result.
+up to the point there is nothing left. If this sound confusing don't worry. Just follow this computation with me.
 
-*Note:* You can see I'm using term ~tail~ a lot. In fact this has nothing to do with tail-recursion itself but rather with list we are using in these examples.
-This might be a bit confusing but even though recursion is common while processing lists it's really not the only place where we are speaking about recursion.
-This is also why I chose factorial as first example.
+Again lets assume we have list ~[1,2,3]~. ~tail_length/1~ acts just like public interface (initializer) for our private implementation so actual call is to ~tail_lenght/2~ which looks like
+~tail_length([1,2,3], 0)~. What we do next is to calculate length up to this point by adding intermediate (~Acc~) result to result for current head - ~0 + 1~.
+Since we don't have lenght for any element yet we pass 0 in intial call (you can think this is length of empty list if you wish).
+Ok so length of heads up to this point is ~1~ (0 + 1). Then we need calculate length of tail in next call ~tail_length([2,3], 1)~.
+See that there is nothing we have wait for? Result of this expression is just result of recursive call. This is why compiler is able to optimize this under the hood.
+Let's continue. Next call will look like this ~tail_length([3], 1 + 1) = tail_length([3], 2)~ because length of head is always one we just need to add 1 to length of previous heads every time we don't match empty list.
+And finally last call matches 2 cause which evaluates ~2 + 1 = 3~ and this is our result.
+
+*Note:* You can see I'm using term ~tail~ a lot. Once again this has nothing to do with tail-recursion itself but rather with list we are using in examples.
+This might be a bit confusing but even though recursion is common while working with lists it's really not the only place where we are speaking about (tail) recursion.
+This is why I used factorial as first example.
 
 So far we have 2 nice little examples of tail recursion in Erlang. However you can easily transform all of this to any other language
 (even to one which has no tail recursive optimization build in if you want - but don't expect any better characteristics than).
 Of course every language has it's own specifics. Let's have a look of possible Haskell implementation.
-Notice that Haskell's pattern matching is slightly different. In Erlang there are 3 patterns to match list - ~[]~ for empty list (nil),
+
+Notice that Haskell's pattern matching is slightly different. In Erlang there were 3 patterns to match list - ~[]~ for empty list (nil),
 ~[x]~ for list with one element and ~[H|T]~ for list with more elements (Head and Tail).
-In Haskell you need just 2 patterns since list with one element is list with head and empty list as tail ~head:[]~.
-Whit this in mind lets have a look at actual code.
+In Haskell you need just 2 patterns since list with one element (just head) is list with head and empty list as tail - ~head:[]~.
+With this in mind lets have a look at actual code.
 
 #+BEGIN_SRC haskell
 module Length(length) where
@@ -165,29 +181,26 @@ length' acc [] = acc
 length' acc (h:t) = length' (acc + 1) t
 #+END_SRC
 
-You can notice few other differences. We are using prime (~'~) in name of private function. Also the order of arguments is different.
-This is also quite important difference since Haskell uses [[https://en.wikipedia.org/wiki/Currying][currying]]. This is nice example of how language features might affect the way you design your API
-to make its usage convenient. However we're not hear to speak about nether language features nor currying so look for different places if you're interested to learn more about this.
+You can notice few other differences from previous example. First we are using prime (~'~) in name of private function. Also the order of arguments is different.
+Since Haskell is using [[https://en.wikipedia.org/wiki/Currying][currying]] this order of arguments seems to be more logic. This is nice example of how language features might affect the way you design your API
+to make its usage convenient. However we're not hear to speak about neither language features nor currying. You can find plenty of articles to learn more about both.
 
 Recursive functions for data-structures like list have one interesting property.
 There is really a lot of useful functions like ~map~, ~filter~, ~length~, ~zip~, ~sum~ and similar.
 What they have in common? Try to think about possible implementation. You always initialize them with some value.
-This value also have same time of result of recursive call. And then you go over all elements in data-structure.
-In fact this pattern is so common that it has it's own name and abstraction if almost every language (at least one with higher order functions).
+This value is of the same type as result of recursive call. And then you go over all elements inside this data-structure.
+In fact this pattern is so common that it has it's own name and abstraction in almost every language (at least one with higher order functions).
 This is called [[https://en.wikipedia.org/wiki/Fold_(higher-order_function)][folding]]. You might know this as ~folder~ ~foldl~ or ~reduce~ function in your language.
-Also you're maybe familiar with fancy buzzword like [[https://en.wikipedia.org/wiki/MapReduce][MapReduce]]. Funny fact - Map is just one specific reducing function.
-Term map reduce is like saying AdditionComputetion or PaintinbluePaintingcolors. I think this is a bit funny. Anyway this name makes some sense
-since due to distributed nature of such systems Map is the only type of reducer you can run in parallel on multiple nodes and then you can do reduce step on all collected data.
-Anyway this still illustrates how crucial is to be seeking for general understanding rather than buzz words even though their our the seller in our industry.
-You can learn Java programming language(TM) (actually this is whole official name so never say just Java again!) to be able to write programs in Java.
-Or you can learn general Mathematical principles you will be able to apply no matter what technology your employer chose to use.
+Also you're maybe familiar with fancy buzzword thing called [[https://en.wikipedia.org/wiki/MapReduce][MapReduce]]. Fun fact - Map is just one specific type of reduced.
+Term "map-reduce" is in that sense like saying "paint_in_red-paint_in_color". Anyway this name makes some sense
+since due to distributed nature of such systems ~map~ is type of reducer you can run in parallel (in distribution) and then you reduce all collected data way you want.
 
-Next (and last) part of these series I want to dedicate just to folding. Anyway for now let me show you one more example.
-On this example I want to demonstrate how to solve something we don't need to solve in any other previous examples.
+In next (and last) part of this series of articles I want to dedicate just to folding. Anyway for now let me show you one more example.
+Next algorithm can is recursive but can't be implemented using folding.
 
 *** Fibonacci Number
 
-Fibonacci numbers are highly overused example for recursive algorithms. Probably because it's so elegant equation.
+Fibonacci numbers are highly overused example for recursive algorithms. You probably saw it dozen times so here it's once again:
 
 #+BEGIN_SRC erlang
 -module(fib).
@@ -199,9 +212,9 @@ fib(1) -> 1;
 fib(N) -> fib(N - 2) + fib(N - 1).
 #+END_SRC
 
-and most of the slides on conferences ends right here. For example like [[http://www.youtube.com/watch?v=5hDVftaPQwY&t=7m15s][this one]] by "Pragmatic Dave Thomas".
+And the most slides on conferences ends right here. For example [[http://www.youtube.com/watch?v=5hDVftaPQwY&t=7m15s][this one]] by "Pragmatic Dave Thomas".
 
-I really don't want to undermine mr. Thomas in any way but let me just show Ruby implementation of this:
+I really don't want to undermine mr. Thomas in any way but this is how same thing looks like in Ruby:
 
 #+BEGIN_SRC ruby
   def fib(n)
@@ -211,7 +224,8 @@ I really don't want to undermine mr. Thomas in any way but let me just show Ruby
   end
 #+END_SRC
 
-Doesn't look so different to me. Even though more ruby like implementation would be probably:
+Doesn't look so different to me¯\_(ツ)_/¯.
+Even though more ruby-like implementation would be probably:
 
 #+BEGIN_SRC ruby
 class Integer
@@ -242,15 +256,11 @@ tail_fib(0, Acc1, Acc2) -> Acc1 + Acc2;
 tail_fib(N, Acc1, Acc2) -> tail_fib(N - 1, Acc2, Acc1 + Acc2)
 #+END_SRC
 
-That's it! Principle is still same just applied to different problem. I'm not going to go through evaluation once again so take this as exam if you want to understand.
+That's it! Principle is still the same just applied to different problem. I'm not going to go through evaluation once again so take this as exam if you want.
 
 * Final thoughts
 
 I hope now you have better understanding what tail recursion is, how it works and how to write your own tail recursive functions.
-However in most case you don't really need to implement everything we did in this article. For instance our length function implementation
-can be done in much less code using things just simple level of abstraction like ~foldr~, ~foldl~ or ~reduce~.
-In fact this was original reason I've started writing these series. The truth is that most functional developers are already familiar with
-recursion and tail recursion. However in my daily job I still get in touch with Ruby, JavaScript and TypeScript pretty often and I still see
-that many developers are not familiar with ~reduce~ function in these languages and don't know how and when to use it.
-As a result they are looping over arrays like crazy even though they can express whole idea in one nice little reducer.
-Anyway more about this later in post that will be hopefully much shorter than this one.
+However in most cases you don't really need to implement everything we did in this article. For instance our length function
+can be written in much less code using just one simple level of abstraction - ~foldr~, ~foldl~ or ~reduce~ or [[https://en.wikibooks.org/wiki/Haskell/Foldable][Foldable]] if you want.
+More about this next time. Peace.
