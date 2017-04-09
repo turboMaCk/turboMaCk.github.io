@@ -5,7 +5,7 @@ description: Optimizing recursive functions using tail calls.
 tags: functional programming, haskell, erlang
 ---
 
-In [[https://turbomack.github.io/posts/2017-02-12-recursion.html][part #1]] of this series I wrote about reasons why I think recursion is important and try to reevaluate on this topic a bit.
+In [[./2017-02-12-recursion.html][part #1]] of this series I wrote about reasons why I think recursion is important and try to reevaluate on this topic a bit.
 This time I would like to finally focus on *tail recursion* itself.
 
 *Note:* One of occasions I've been discussing tail recursion was when I was staying in hotel in London with one of my colleagues.
@@ -15,7 +15,7 @@ Anyway I'll also add few examples in different languages just to show how tail r
 * Tail Recursion
 
 If you're interested in proper definition tail recursion have a look at [[https://en.wikipedia.org/wiki/Tail_call][wikipedia article]].
-To translate this definition to other language you might find easier to understand we can go back to recursion itself. In [[https://turbomack.github.io/posts/2017-02-12-recursion.html][previous part]] we said that recursion means self reference - speaking about functions
+To translate this definition to other language you might find easier to understand we can go back to recursion itself. In [[./2017-02-12-recursion.html][previous part]] we said that recursion means self reference - speaking about functions
 we can simply say that it's function which calls itself internally. One thing that might be confusing is term "tail recursion" itself.
 In article about recursion we were often using functions for manipulating linked list. This makes sense because list is useful and simple recursive datastructure.
 However as you might know list are defined as being either empty (~nil~) or ~head cons tail~ where tail is other list (the one without head).

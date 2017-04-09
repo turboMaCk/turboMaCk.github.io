@@ -132,4 +132,4 @@ Wouldn't it be nice to have recursive implementation and hand optimization to co
 Good news folks! There are compilers capable of such optimization out there! The only requirement on your side
 is to keep your implementation [[https://en.wikipedia.org/wiki/Tail_call][tail recursive]]!
 
-We will look what this mean and how you can use it in next part. Till then let force be with you my friends.
+We will look what this mean and how you can use it in [[./2017-04-09-tail-recursion.html][next part]]. Till then let force be with you my friends.
