@@ -2,7 +2,7 @@
 title: Deeper Dive To (Tail) Recursion - 2 Tail Calls
 subtitle: Boosting recursive algorithms
 description: Optimizing recursive functions using tail calls.
-tags: functional programming, haskell, erlang
+tags: functional-programming, haskell, erlang
 ---
 
 In [[./2017-02-12-recursion.html][part #1]] of this series I wrote about reasons why I think recursion is important and try to reevaluate on this topic a bit.
