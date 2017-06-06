@@ -119,8 +119,7 @@ Array.prototype.filterMap = function (fc) {
 }
 #+END_SRC
 
-Since `Array.prototype.reduce` is build in function we can use that one instead of our implementation:
-
+Since ~Array.prototype.reduce~ is build in function we can use that one instead of our implementation:
 
 #+BEGIN_SRC javascript
 Array.prototype.filterMap = function (fc) {
