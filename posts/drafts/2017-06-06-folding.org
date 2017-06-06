@@ -119,6 +119,19 @@ Array.prototype.filterMap = function (fc) {
 }
 #+END_SRC
 
+Since `Array.prototype.reduce` is build in function we can use that one instead of our implementation:
+
+
+#+BEGIN_SRC javascript
+Array.prototype.filterMap = function (fc) {
+    return this.reduce((acc, i) => {
+        const res = fc(i);
+        if (res) acc.push(res);
+        return acc;
+    }, []);
+}
+#+END_SRC
+
 And this is how it works:
 
 #+BEGIN_SRC text
