@@ -41,6 +41,7 @@ pre {
     &.sourceCode,
     &.shell,
     &.txt,
+    &.typescript,
     &.rundoc-block {
         border: 1px dashed lighten($highlight_color, 20%);
         font-size: 14px;

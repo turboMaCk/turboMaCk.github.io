@@ -1,0 +1,127 @@
+---
+title: Deeper Dive To (Tail) Recursion - Folding
+subtitle: power of reduce in practice
+description: Using folding to abstract from recursion
+tags: functional-programming
+---
+
+It's been a while since I've wrote my [[/posts/2017-04-09-tail-recursion.html][latest post]] to this series.
+Anyway in mean time some new topic for posts came to my mind but I didn't really want to open anything new before closing this one.
+Frankly I was not sure how to grab this last bit. Unfortunately friend of mine asked me if I can explain to him some functional patterns in Java 8 just few days ago.
+In mean time I've attended [[https://coderetreat.cz/2017/05/27/coderetreat-brno.html][code retreat]] where I had a chance to put my hands on C# a bit.
+From both experiences it seems that a lot of folks in imperative world have bad time understanding new functional patters coming
+to their languages like [[https://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html][Java's Streams]] and [[https://msdn.microsoft.com/en-us/library/bb397676(v=vs.110).aspx][C#'s LINQ]].
+
+This experience putted me to some direction. There for in this part I'm not going to focus on explaining things like [[https://hackage.haskell.org/package/base-4.9.1.0/docs/Data-Foldable.html][Haskel's Foldable type class]] or [[https://en.wikipedia.org/wiki/Monoid][Monoid]]
+but rather on basic explanation on simple examples. If you're interested in reading more about ~Foldable~ in context of Category Theory I suggest reading [[https://en.wikibooks.org/wiki/Haskell/Foldable][this article]].
+I'll be using [[https://www.typescriptlang.org][Type Script]] for code examples in this article.
+
+* Reduce
+
+Most languages with decent support for higher order functions has some kind of folding built-in standard library.
+For instance [[https://apidock.com/ruby/Enumerable/reduce][ruby has reduce]] and [[https://apidock.com/ruby/Enumerable/inject][inject]], [[https://docs.python.org/2/library/functions.html#reduce][python has reduce]] and [[https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/Reduce?v=example][java script has reduce too]].
+To understand this handy method let's implement it ourselves. I'm pretty sure most of you are already familiar with `map` method
+or function in array. Let's start with our own implementation of map using recursion.
+We will do it using function which takes array rather then method on some object just for sake of simplicity:
+
+#+BEGIN_SRC javascript
+function map<A, B>(fc: (item: A) => B, arr: A[]): B[] {
+    const head: A = arr[0];
+    const tail: A[] = arr.slice(1);
+
+    if (!head) {
+        return [];
+    }
+
+    return [fc(head)].concat(map(fc, tail));
+}
+#+END_SRC
+
+This is one possible way to implement map using recursion.
+Obviously this is not the most efficient map implementation but we're speaking
+about recursion rather then loops in this series.
+If you have troubles understanding this code I reading recommend my [[/posts/2017-02-12-recursion.html][opening article]].
+Anyway this is implementation of same function using looping which will have much better
+performance characteristics:
+
+#+BEGIN_SRC javascript
+function map<A, B>(fc: (item: A) => B, arr: A[]): B[] {
+    const result: B[] = [];
+
+    for (let i = 0; i < arr.length; i++) {
+        result.push(fc(arr[i]));
+    }
+    return result;
+}
+#+END_SRC
+
+** Abstract Using Reduce
+
+#+BEGIN_SRC javascript
+function reduce<A, B>(fc: (acc: B, item: A) => B, acc: B, arr: A[]): B {
+    const head: A = arr[0];
+    const tail: A[] = arr.slice(1);
+
+    if (!head) {
+        return acc;
+    }
+
+    return reduce(fc, fc(acc, head), tail);
+}
+#+END_SRC
+
+Alternative implementation with loops then looks like:
+
+#+BEGIN_SRC javascript
+function reduce<A, B>(fc: (acc: B, item: A) => B, acc: B, arr: A[]): B {
+    for (let i = 0; i < arr.length; i++) {
+        acc = fc(acc, arr[i]);
+    }
+
+    return acc;
+}
+#+END_SRC
+
+#+BEGIN_SRC javascript
+function map<A, B>(fc: (item: A) => B, arr: A[]): B[] {
+    return reduce((acc, i) => {
+        acc.push(fc(i));
+        return acc;
+    }, [], arr);
+}
+#+END_SRC
+
+#+BEGIN_SRC javascript
+function sum(arr: number[]): number {
+    return reduce((acc, i) => acc + i, 0, arr);
+}
+#+END_SRC
+
+#+BEGIN_SRC javascript
+function join(str: string, arr: string[]): string {
+    return reduce((acc, i) => acc.length > 0 ? acc + str + i : i, "", arr);
+}
+#+END_SRC
+
+#+BEGIN_SRC javascript
+declare global {
+    interface Array<T> {
+        filterMap<B>(fc: ((item: T) => B)): B[];
+    }
+}
+
+Array.prototype.filterMap = function (fc) {
+    return reduce((acc, i) => {
+        const res = fc(i);
+        if (res) acc.push(res);
+        return acc;
+    }, [], this);
+}
+#+END_SRC
+
+And this is how it works:
+
+#+BEGIN_SRC text
+> [1,2,3].filterMap(i => i > 1 ? i + 1 : null)
+[ 3, 4 ]
+#+END_SRC
