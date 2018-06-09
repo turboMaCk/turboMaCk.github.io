@@ -11,3 +11,10 @@ executable site
                   , pandoc
   ghc-options:      -threaded -Wall
   default-language: Haskell2010
+
+executable publish
+  main-is:          publish.hs
+  build-depends:    base == 4.*
+                  , directory
+  ghc-options:      -threaded -Wall
+  default-language: Haskell2010
