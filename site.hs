@@ -5,7 +5,6 @@ import Data.Monoid ((<>))
 import Control.Monad (when)
 
 import Hakyll
-import Hakyll.Contrib.Elm
 import Hakyll.Web.Sass (sassCompiler)
 
 --------------------------------------------------------------------------------
@@ -83,11 +82,6 @@ main = do
         match "sass/default.scss" $ do
             route $ setExtension "css" `composeRoutes` gsubRoute "sass/" (const "css/")
             compile (compressCssItem <$> sassCompiler)
-
-        -- Elm
-        match "elm/*.elm" $ do
-            route $ setExtension "js" `composeRoutes` gsubRoute "elm/" (const "js/")
-            compile elmMake
 
         -- Tags
         tags <- buildTags postsPattern (fromCapture "tags/*.html")
