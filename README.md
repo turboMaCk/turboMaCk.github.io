@@ -19,6 +19,16 @@ For live dev server use
 $ stack exec site watch
 ```
 
+## Publishing
+
+There is interactive script that automates publishing to new version.
+
+```
+$ stack exec publish
+```
+
+then you have to checkout `master` branch and commit changes and push to origin.
+
 ## Licenses
 
 - [Source code](LICENSE) - BSD-3-Clause
