@@ -1,6 +1,6 @@
 --------------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
-import System.Environment
+import System.Environment (getArgs)
 import Data.Monoid ((<>))
 import Control.Monad (when)
 
