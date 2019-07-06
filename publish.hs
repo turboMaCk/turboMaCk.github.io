@@ -1,10 +1,10 @@
+{-# LANGUAGE KindSignatures    #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE Rank2Types #-}
 
-import System.Directory
-import System.Environment
-import System.IO (hPutStrLn, stderr)
-import Control.Monad (when)
+import           Control.Monad      (when)
+import           System.Directory
+import           System.Environment
+import           System.IO          (hPutStrLn, stderr)
 
 
 -- Settings
@@ -26,7 +26,6 @@ distributionLocation = "_site"
 getAbsolutePath :: FilePath -> FilePath -> FilePath
 getAbsolutePath root = (++) $ root ++ "/"
 
--- mappendIf :: forall (m :: * -> *). Monad m => m Bool -> m () -> m ()
 mappendIf :: IO Bool -> IO () -> IO ()
 mappendIf check action =
     check >>= (\ b -> when b $ action)

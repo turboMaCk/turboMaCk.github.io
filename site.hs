@@ -49,12 +49,12 @@ My blog builder on top of Hakyll & Haskell
 -}
 --------------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
-import System.Environment (getArgs)
-import Data.Monoid ((<>))
-import Control.Monad (when)
+import           Control.Monad      (when)
+import           Data.Monoid        ((<>))
+import           System.Environment (getArgs)
 
-import Hakyll
-import Hakyll.Web.Sass (sassCompiler)
+import           Hakyll
+import           Hakyll.Web.Sass    (sassCompiler)
 
 --------------------------------------------------------------------------------
 
