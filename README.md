@@ -24,17 +24,24 @@ $ site clean  # cleans the cache
 $ site help   # show full list of commands
 ```
 
+
 ## Publishing
 
 There is interactive script that automates publishing to new version.
+Because I'm deploying this as a GitHub page which is main personal page
+published HTML must be in master branch. This is why my deployment flow involves some git hacks.
 
-from within nix-shell:
 
 ```
+$ nix-shell
+$ site build
+$ git branch -D master
+$ git checkout -b master
 $ publish
+$ git add -A
+$ git commit -m "publish"
+$ git push origin master
 ```
-
-then you have to checkout `master` branch and commit changes and push to origin.
 
 ## Developement of Haskell bin
 
