@@ -21,3 +21,6 @@ cabal.sandbox.config
 
 # Elm
 elm-stuff
+
+# nix
+result
