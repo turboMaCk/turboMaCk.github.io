@@ -5,26 +5,33 @@ Feel free to use both content and source code as you wish as log as you respect 
 
 ## Installation
 
-First you need to clone [hakyll-sass](https://github.com/meoblast001/hakyll-sass) cloned locally.
-Then within the same folder you can clone this repository and install rest of the deps.
+This project is using [nix](https://nixos.org/nix/) as a build tool.
+
+For interactive shell environment run:
 
 ```
-$ stack build
-$ stack exec stte build
+$ nix-shell --pure
 ```
 
-For live dev server use
+from within this directory. This should start bash with `site` binary available to use.
+
+Following commands are available
 
 ```
-$ stack exec site watch
+$ site build  # compiles HTML
+$ site watch  # runs developement server with watcher
+$ site clean  # cleans the cache
+$ site help   # show full list of commands
 ```
 
 ## Publishing
 
 There is interactive script that automates publishing to new version.
 
+from within nix-shell:
+
 ```
-$ stack exec publish
+$ publish
 ```
 
 then you have to checkout `master` branch and commit changes and push to origin.
