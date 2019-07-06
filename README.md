@@ -51,6 +51,7 @@ In this case `default.nix` should be used rather than `shell.nix` though.
 
 ```
 $ nix-shell default.nix -A env
+$ cd src
 ```
 
 ## Licenses
