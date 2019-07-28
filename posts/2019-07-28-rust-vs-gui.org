@@ -140,7 +140,7 @@ And this is how the app looks like when I run ~$ cargo run~.
 I'm using tiling window manager (XMonad) so this will probably
 look slightly different on most other desktops.
 
-[[../../assets/2019-07-28_17-07-ui.png]]
+[[../assets/2019-07-28_17-07-ui.png]]
 
 * Adding Actions
 
@@ -551,7 +551,7 @@ because one never knows when (s)he will need to count from zero to some number. 
 
 Since I have Mac as well, I can try that nix-build is working on MacOS as expected.
 
-[[../../assets/2019-07-28-mac-ui.png]]
+[[../assets/2019-07-28-mac-ui.png]]
 
 Enjoy glib compile time if you try this.
 
