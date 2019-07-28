@@ -572,3 +572,5 @@ If you're a Haskeller, you should check the [[https://github.com/owickstrom/gi-g
 Will I use Rust to build some useful GTK+ application myself? Maybe I will! But I will definitely evaluate
 both Rust and some GC language (probably Haskell) and choose the more appropriate tool to do the job
 based on the business logic.
+
+The whole code is [[https://github.com/turboMaCk/rust-gtk-counter][available on GitHub]].
