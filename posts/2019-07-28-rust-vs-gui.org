@@ -565,7 +565,7 @@ Also, our application is miles away from being advanced or even useful.
 I have to admit that Rust brings some reasonable trade-offs when it comes to building a GTK+ application.
 This doesn't mean that it's for free though. If you expect to write the code in the same way as you would do
 using some binding to language with GC (like Python or JavaScript) or probably even idiomatic GTK+ C, you're
-likely to hit some walls on the way. If you decide to use Rust for GTK+ application development anzwaz,
+likely to hit some walls on the way. If you decide to use Rust for GTK+ application development anyway,
 you might want to check [[https://github.com/antoyo/relm][relm]] for higher level API before you start designing your own framework.
 If you're a Haskeller, you should check the [[https://github.com/owickstrom/gi-gtk-declarative][gi-gtk-declarative]] but be aware that *both of those libraries are alpha*.
 
