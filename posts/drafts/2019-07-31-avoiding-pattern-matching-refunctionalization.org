@@ -1,0 +1,384 @@
+---
+title: Avoiding Pattern Matching
+subtitle: Regaining composability using refunctionalization
+description: TBA
+tags: elm, fp
+---
+
+I mean to write this post rather as a quick run through of some idea.
+Anyway I'm going to start with rather more detailed explanation of what motivates
+me to write this post in the first place and what is and what is not motivating me to write it.
+If you're not interested in reading this you can [[][skip right to the content itself]].
+
+Few days ago, my colleague [[][Martin Janiczek]] published a post on his blob called
+[[][Defunctionalization in Elm]]. In the post he talks about applying something that
+was marketed as [[][The Best Refactoring You've Never Heard Of]] which is essentially
+talk about refactoring between higher order functions and data.
+
+...
+
+The actual real world implementation is a quite involved but for the purpose of
+explanation as just this idea we can simply mock it using unit type which are those:
+
+- ~Flags~ is type contained app configuration things needed to create requests
+- ~Store~ is type in which application stores data
+- ~Config msg~ contains configuration for of the module (in reality record of functions, for simplification function)
+- ~Msg~ is sum of different callbacks containing data as this is how in TEA async gets done (~Cmd Msg~)
+
+mocking all of those types with what is isomorphic to unit type but specialized to every case looks like this.
+
+```elm
+module Store exposing (..)
+
+type Flags
+    = Flags
+
+
+type Store
+    = Store
+
+
+type alias Config msg =
+    Msg -> msg
+
+
+type Msg
+    = Msg
+```
+
+This part of the Store module is not changing but it's important as the other code interacts with it.
+
+* Introduce Coupling via Sum and Pattern Matching
+
+In "defunctionalized" code of this module continues as following:
+
+```elm
+type alias FetchConfig a b =
+    { update : a -> Store -> Store
+    , done : Maybe b -> Cmd Msg
+    }
+
+
+fetch_ : FetchConfig a b -> Config msg -> Flags -> Store -> ( Store, Cmd msg )
+fetch_ { done } toMsg Flags Store =
+    ( Store, Cmd.map toMsg <| done Nothing )
+
+
+type FetchAction
+    = FetchFoo
+    | FetchBar
+
+
+fetch : FetchAction -> Config msg -> Flags -> Store -> ( Store, Cmd msg )
+fetch action =
+    case action of
+        FetchFoo ->
+            fetch_
+                { update = always
+                , done = always Cmd.none
+                }
+
+        FetchBar ->
+            fetch_
+                { update = always
+                , done = always Cmd.none
+                }
+
+
+fetchMany : List FetchAction -> Config msg -> Flags -> Store -> ( Store, Cmd msg )
+fetchMany actions config flags store =
+    List.foldl
+        (\action ( store_, cmd ) ->
+            let
+                ( newStore, newCmd ) =
+                    fetch action config flags store_
+            in
+            ( newStore, Cmd.batch [ cmd, newCmd ] )
+        )
+        ( store, Cmd.none )
+        actions
+```
+
+~FetchConfig msg~ is sort of intermediate structure, product of all the things that
+are expected to differ for individual cases.
+
+~fetch_~ is helper function translating the ~FlagConfig~ to other abstraction.
+In real code this calls another ~Store.Utils.fetch~ function and does nothing more than that.
+
+~FetchACtion~ type is a point of coupling. Sum of all possible actions. Every possible action must be and will
+become part of this type.
+
+~fetch~ does just a branching. For every single fetch it has to know the right set of configuration and delegates rest to the `fetch_`.
+
+~fetchMany~ just folds actions over and aggregates state and Commands.
+
+And this is how the usage looks of the api of this module looks like
+
+```elm
+module Main exposing ()
+
+import Store exposing (Store(..), Flags(..))
+
+type Msg
+    = StoreMsg Store.Msg
+
+
+storeConf : Store.Config Msg
+storeConf =
+    StoreMsg
+
+
+caller : ( Store, Cmd Msg )
+caller =
+    fetchMany [ Store.FetchFoo, Store.FetchBar ] storeConf Flags Store
+```
+
+caller is function that calls our API. I'm tempted to argue that putting the list argument as a last one
+would be better in this case as then it would be possible to first configure the function by applying arguments
+and than calling the function returned with different actions. Also in elm it would be possible to format
+it a bit nicely with `|>` like
+
+```elm
+caller : ( Store, Cmd Msg )
+caller =
+    [ Store.FetchFoo, Store.FetchBar ]
+      |> fetchMany configForA Flags Store
+```
+
+* Decoupling be Functions
+
+No matter how hard I try to look at the version with pattern matching over sum, I don't see in which it's better at all.
+For start the constructors are just constants (or functions for cases they take arguments). That means essentially same
+as, well, constants and functions. What is the problem though that this means our public api, the ~fetch~ function now
+couples all the individual constants together. Does it make anything simpler? Or is it more type-safe?
+No matter how hard I think about it I believe answer to both is simply *no*.
+
+Let's forget the last block of text and see how it would look like if we would replace the ~FetchAction~ sum by
+individual constants. You can even think about it as a sort of reverse of types.
+Instead of having ~FetchAction~ type containing all the constants, we're going to have bunch of constants of the same type.
+
+First let's define the type, we don't need to worry about what this type is just yet.
+
+```elm
+type FetchAction =
+    FetchAction
+
+
+fetchFoo : FetchAction
+fetchFoo = Debug.todo "implement me"
+
+
+fetchBar : FetchAction
+fetchBar = Debug.todo "implement me"
+```
+
+We expect these thing to do everything so we're not going to need any `fetch` or `fetch_` helper.
+
+> Besides we already have other abstraction in ~Store.Urils~ as mentioned above which is in fact the thing that
+does the real work for us.
+
+Now when we know how our API should look like, let's fill the boring implementation in place.
+
+Starting with `FetchData` which is itself function.
+
+```elm
+type FetchAction msg =
+    FetchAction (Config msg -> Flags -> Store -> ( Store, Cmd msg ))
+```
+
+I'm wrapping function to constructor for extra clarity that this is special function we
+can consider as being constant value in some sort of more abstract model in our head.
+In the end it's about first class functions so this function is value itself indeed.
+
+Again sort of mocked implementation continues:
+
+```elm
+fetchFoo : FetchAction msg
+fetchFoo =
+    FetchAction <|
+        \toMsg Flags Store -> ( store, Cmd.map toMsg Cmd.none )
+
+
+fetchBar : FetchAction msg
+fetchBar toMsg Flags store =
+    FetchAction <|
+        \toMsg Flags Store -> ( store, Cmd.map toMsg Cmd.none )
+```
+
+In ~fetchManu~ we can just remove the function name ~fetch~ as the ~action~ argument
+now becomes sort of the action itself. We're also boxing the function itself to
+~FetchAction~ constructor so we're going to need to extract it.
+
+~FetchAction~ type now has to be parametrized though the same way ~fetch~ function was in previous version.
+
+```elm
+fetchMany : List (FetchAction msg) -> Config msg -> Flags -> Store -> ( Store, Cmd msg )
+fetchMany actions config flags store =
+    List.foldl
+        (\(FetchAction action) ( store_, cmd ) ->
+            let
+                ( newStore, newCmd ) =
+                    action config flags store_
+            in
+            ( newStore, Cmd.batch [ cmd, newCmd ] )
+        )
+        ( store, Cmd.none )
+        actions
+```
+
+This function is almost identical to the one from the "defunctionalized" version.
+It just doesn't need to call any other function (~fetch~) so *if anything it's simpler*.
+
+Look at the usage now:
+
+```elm
+module Main exposing ()
+
+import Store exposing (Store(..), Flags(..))
+
+type Msg
+    = StoreMsg Store.Msg
+
+
+storeConf : Store.Config Msg
+storeConf =
+    StoreMsg
+
+
+caller : ( Store, Cmd Msg )
+caller =
+    fetchMany [ Store.fetchFoo, Store.fetchBar ] storeConf Flags Store
+```
+
+See the difference? It's just in ~Store.FetchFoo~ for "defunctionalized" version vs ~Store.fetchFoo~.
+Is this more complicated in any way? I let you to be the judge.
+
+* Extendability
+
+Since the second example doesn't contain tight coupling to the same sum type it can be quite easily composed even in Elm
+where composition of data is much more restricted because of simple type system. For instance we can generalize
+Store module in a way it can be extended with additional data and fetch functions like in this example:
+
+Make store extensible record:
+
+```elm
+module Store exposing (..)
+
+
+type Flags
+    = Flags
+
+
+type alias Store r =
+    { r | x : () }
+
+
+type alias Config msg =
+    Msg -> msg
+
+
+type Msg
+    = Msg
+
+
+
+-- New API
+
+
+type FetchAction msg r
+    = FetchAction (Config msg -> Flags -> Store r -> ( Store r, Cmd msg ))
+
+
+fetchFoo : FetchAction msg r
+fetchFoo =
+    FetchAction <|
+        \toMsg Flags store -> ( store, Cmd.map toMsg Cmd.none )
+
+
+fetchBar : FetchAction msg r
+fetchBar =
+    FetchAction <|
+        \toMsg Flags store -> ( store, Cmd.map toMsg Cmd.none )
+
+
+fetchMany : List (FetchAction msg r) -> Config msg -> Flags -> Store r -> ( Store r, Cmd msg )
+fetchMany actions config flags store =
+    List.foldl
+        (\(FetchAction action) ( store_, cmd ) ->
+            let
+                ( newStore, newCmd ) =
+                    action config flags store_
+            in
+            ( newStore, Cmd.batch [ cmd, newCmd ] )
+        )
+        ( store, Cmd.none )
+        actions
+```
+
+Extend the store with custom data in main module:
+
+```elm
+module Main exposing ()
+
+import Store exposing (Store(..), Flags(..))
+
+
+type Msg
+    = StoreMsg Msg
+
+
+type alias ExtendedStore =
+    { x : (), y : () }
+
+
+caller : ( ExtendedStore, Cmd Msg )
+caller =
+    fetchMany [ fetchFoo, fetchBar, fetchBaz ] StoreMsg Flags { x = (), y = () }
+
+
+fetchBaz : FetchAction msg ExtendedStore
+fetchBaz =
+    Store.FetchAction <|
+        \toMsg Flags store -> ( store, Cmd.map toMsg Cmd.none )
+```
+
+This would not be possible with previous example.
+
+* Looking at Right Place
+
+Martin ends his post with showing the screenshot of a part of final diff.
+In this code section he simplifies a bit more involved code into an alias to Constructor.
+This code was also highlighted in the PR.
+
+I don't think this part has much to do with anything. Further more I think it's avoidable to do something
+like this in any shape or form. There I believe the original code was done badly.
+
+this is about module which on init requests some data. we can emit ~FetchAction~
+
+```elm
+init : (List (FetchAction msg) -> Cmd msg) -> ((), Cmd msg)
+init fetch =
+    ((), fetch [Store.fetchFoo, Store.fetchBar] )
+```
+
+now we don't need any special `Msg` in parent module. All we do is pass down the ~Store.fetchMany~ with applied arguments like Store and Flags.
+Simple as that.
+
+* Conclusion
+
+Continuations are powerful thing and especially in language where magic you can do with the data being limited,
+they might be the most composable gun in your arsenal. Sorry but function is the most powerful type of data you have.
+
+Pattern matching generally leads to the coupling and usage of sum types leads to unnecessary branching.
+In some cases it's unavoidable or even desirable to do such thing but it in fact hurts the code
+in more cases than folks realize.
+In some sense we're making a full circle back to the days where C APIs that are using integer arguments for changing it's behavior were.
+We just have slightly more expressive tool to do so than integer is.
+
+Some time ago I also created [[][elm-continue]] package which contains even more generalized abstraction
+for working with continuations than we used here. That's probably something to check if you're willing
+to go even slightly more crazy about patterns like this. I just must warn you that not everyone will like you for using it.
+
+I honestly haven't enjoy writing this post much. First it might seem like a criticism, second I know a lot of people will disagree without even reading this far
+and lastly I personally consider all what I wrote here as painfully obvious and therefor not that interesting.
+The reason why I wrote this post anyway is the slight chance that someone will find this useful or interesting (looking at you Zdenko).
