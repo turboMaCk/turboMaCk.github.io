@@ -1,16 +1,16 @@
 ---
 title: Avoiding Pattern Matching
-subtitle: Regaining composability using refunctionalization
+subtitle: Regaining open composability using refunctionalization
 description: TBA
 tags: elm, fp
 ---
 
-I mean to write this post rather as a quick run through of some idea.
+I meant to write this post rather as a quick run through explanation of some of my ideas.
 Anyway I'm going to start with rather more detailed explanation of what motivates
 me to write this post in the first place and what is and what is not motivating me to write it.
 If you're not interested in reading this you can [[][skip right to the content itself]].
 
-Few days ago, my colleague [[][Martin Janiczek]] published a post on his blob called
+Few days ago, my colleague [[][Martin Janiczek]] published a post on his blog called
 [[][Defunctionalization in Elm]]. In the post he talks about applying something that
 was marketed as [[][The Best Refactoring You've Never Heard Of]] which is essentially
 talk about refactoring between higher order functions and data.
@@ -18,7 +18,7 @@ talk about refactoring between higher order functions and data.
 ...
 
 The actual real world implementation is a quite involved but for the purpose of
-explanation as just this idea we can simply mock it using unit type which are those:
+this post we can simply mock it using types which are those:
 
 - ~Flags~ is type contained app configuration things needed to create requests
 - ~Store~ is type in which application stores data
@@ -27,7 +27,7 @@ explanation as just this idea we can simply mock it using unit type which are th
 
 mocking all of those types with what is isomorphic to unit type but specialized to every case looks like this.
 
-```elm
+#+BEGIN_SRC elm
 module Store exposing (..)
 
 type Flags
@@ -44,7 +44,7 @@ type alias Config msg =
 
 type Msg
     = Msg
-```
+#+END_SRC
 
 This part of the Store module is not changing but it's important as the other code interacts with it.
 
@@ -52,7 +52,7 @@ This part of the Store module is not changing but it's important as the other co
 
 In "defunctionalized" code of this module continues as following:
 
-```elm
+#+BEGIN_SRC elm
 type alias FetchConfig a b =
     { update : a -> Store -> Store
     , done : Maybe b -> Cmd Msg
@@ -97,7 +97,7 @@ fetchMany actions config flags store =
         )
         ( store, Cmd.none )
         actions
-```
+#+END_SRC
 
 ~FetchConfig msg~ is sort of intermediate structure, product of all the things that
 are expected to differ for individual cases.
@@ -108,13 +108,13 @@ In real code this calls another ~Store.Utils.fetch~ function and does nothing mo
 ~FetchACtion~ type is a point of coupling. Sum of all possible actions. Every possible action must be and will
 become part of this type.
 
-~fetch~ does just a branching. For every single fetch it has to know the right set of configuration and delegates rest to the `fetch_`.
+~fetch~ does just a branching. For every single fetch it has to know the right set of configuration and delegates rest to the ~fetch_~.
 
 ~fetchMany~ just folds actions over and aggregates state and Commands.
 
 And this is how the usage looks of the api of this module looks like
 
-```elm
+#+BEGIN_SRC elm
 module Main exposing ()
 
 import Store exposing (Store(..), Flags(..))
@@ -131,19 +131,19 @@ storeConf =
 caller : ( Store, Cmd Msg )
 caller =
     fetchMany [ Store.FetchFoo, Store.FetchBar ] storeConf Flags Store
-```
+#+END_SRC
 
 caller is function that calls our API. I'm tempted to argue that putting the list argument as a last one
 would be better in this case as then it would be possible to first configure the function by applying arguments
 and than calling the function returned with different actions. Also in elm it would be possible to format
 it a bit nicely with `|>` like
 
-```elm
+#+BEGIN_SRC elm
 caller : ( Store, Cmd Msg )
 caller =
     [ Store.FetchFoo, Store.FetchBar ]
       |> fetchMany configForA Flags Store
-```
+#+END_SRC
 
 * Decoupling be Functions
 
@@ -159,7 +159,7 @@ Instead of having ~FetchAction~ type containing all the constants, we're going t
 
 First let's define the type, we don't need to worry about what this type is just yet.
 
-```elm
+#+BEGIN_SRC elm
 type FetchAction =
     FetchAction
 
@@ -170,21 +170,23 @@ fetchFoo = Debug.todo "implement me"
 
 fetchBar : FetchAction
 fetchBar = Debug.todo "implement me"
-```
+#+END_SRC
 
 We expect these thing to do everything so we're not going to need any `fetch` or `fetch_` helper.
 
-> Besides we already have other abstraction in ~Store.Urils~ as mentioned above which is in fact the thing that
+#+BEGIN_QUOTE
+Besides we already have other abstraction in ~Store.Urils~ as mentioned above which is in fact the thing that
 does the real work for us.
+#+END_QUOTE
 
 Now when we know how our API should look like, let's fill the boring implementation in place.
 
-Starting with `FetchData` which is itself function.
+Starting with ~FetchData~ which is itself function.
 
-```elm
+#+BEGIN_SRC elm
 type FetchAction msg =
     FetchAction (Config msg -> Flags -> Store -> ( Store, Cmd msg ))
-```
+#+END_SRC
 
 I'm wrapping function to constructor for extra clarity that this is special function we
 can consider as being constant value in some sort of more abstract model in our head.
@@ -192,7 +194,7 @@ In the end it's about first class functions so this function is value itself ind
 
 Again sort of mocked implementation continues:
 
-```elm
+#+BEGIN_SRC elm
 fetchFoo : FetchAction msg
 fetchFoo =
     FetchAction <|
@@ -203,7 +205,7 @@ fetchBar : FetchAction msg
 fetchBar toMsg Flags store =
     FetchAction <|
         \toMsg Flags Store -> ( store, Cmd.map toMsg Cmd.none )
-```
+#+END_SRC
 
 In ~fetchManu~ we can just remove the function name ~fetch~ as the ~action~ argument
 now becomes sort of the action itself. We're also boxing the function itself to
@@ -211,7 +213,7 @@ now becomes sort of the action itself. We're also boxing the function itself to
 
 ~FetchAction~ type now has to be parametrized though the same way ~fetch~ function was in previous version.
 
-```elm
+#+BEGIN_SRC elm
 fetchMany : List (FetchAction msg) -> Config msg -> Flags -> Store -> ( Store, Cmd msg )
 fetchMany actions config flags store =
     List.foldl
@@ -224,14 +226,14 @@ fetchMany actions config flags store =
         )
         ( store, Cmd.none )
         actions
-```
+#+END_SRC
 
 This function is almost identical to the one from the "defunctionalized" version.
 It just doesn't need to call any other function (~fetch~) so *if anything it's simpler*.
 
 Look at the usage now:
 
-```elm
+#+BEGIN_SRC elm
 module Main exposing ()
 
 import Store exposing (Store(..), Flags(..))
@@ -248,12 +250,12 @@ storeConf =
 caller : ( Store, Cmd Msg )
 caller =
     fetchMany [ Store.fetchFoo, Store.fetchBar ] storeConf Flags Store
-```
+#+END_SRC
 
 See the difference? It's just in ~Store.FetchFoo~ for "defunctionalized" version vs ~Store.fetchFoo~.
 Is this more complicated in any way? I let you to be the judge.
 
-* Extendability
+* Extensibility
 
 Since the second example doesn't contain tight coupling to the same sum type it can be quite easily composed even in Elm
 where composition of data is much more restricted because of simple type system. For instance we can generalize
@@ -261,7 +263,7 @@ Store module in a way it can be extended with additional data and fetch function
 
 Make store extensible record:
 
-```elm
+#+BEGIN_SRC elm
 module Store exposing (..)
 
 
@@ -313,11 +315,11 @@ fetchMany actions config flags store =
         )
         ( store, Cmd.none )
         actions
-```
+#+END_SRC
 
 Extend the store with custom data in main module:
 
-```elm
+#+BEGIN_SRC elm
 module Main exposing ()
 
 import Store exposing (Store(..), Flags(..))
@@ -340,7 +342,7 @@ fetchBaz : FetchAction msg ExtendedStore
 fetchBaz =
     Store.FetchAction <|
         \toMsg Flags store -> ( store, Cmd.map toMsg Cmd.none )
-```
+#+END_SRC
 
 This would not be possible with previous example.
 
@@ -355,11 +357,11 @@ like this in any shape or form. There I believe the original code was done badly
 
 this is about module which on init requests some data. we can emit ~FetchAction~
 
-```elm
+#+BEGIN_SRC elm
 init : (List (FetchAction msg) -> Cmd msg) -> ((), Cmd msg)
 init fetch =
     ((), fetch [Store.fetchFoo, Store.fetchBar] )
-```
+#+END_SRC
 
 now we don't need any special `Msg` in parent module. All we do is pass down the ~Store.fetchMany~ with applied arguments like Store and Flags.
 Simple as that.
