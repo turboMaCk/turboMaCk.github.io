@@ -2,6 +2,7 @@
 title: Rust vs GUI
 subtitle: Implications of Rust's borrow checking and memory ownership on GUI development (simple case)
 description: Walkthrough implementation of simple GTK+ app in Rust for dummies
+reddit: r/rust/comments/clkcba/building_gtk_app_in_rust_for_a_first_time
 tags: rust, GUI, GTK, nix
 ---
 
