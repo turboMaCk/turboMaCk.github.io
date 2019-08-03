@@ -141,7 +141,7 @@ And this is how the app looks like when I run ~$ cargo run~.
 I'm using tiling window manager (XMonad) so this will probably
 look slightly different on most other desktops.
 
-[[../assets/2019-07-28_17-07-ui.png]]
+[[../assets/2019-07-28-ui.png]]
 
 * Adding Actions
 
