@@ -18,14 +18,14 @@ talk about refactoring between higher order functions and data.
 ...
 
 The actual real world implementation is a quite involved but for the purpose of
-this post we can simply mock it using types which are those:
+this post, we can simply mock it using types which are those:
 
-- ~Flags~ is type contained app configuration things needed to create requests
-- ~Store~ is type in which application stores data
-- ~Config msg~ contains configuration for of the module (in reality record of functions, for simplification function)
-- ~Msg~ is sum of different callbacks containing data as this is how in TEA async gets done (~Cmd Msg~)
+- ~Flags~ is type contained app configuration and contains data necessary for creating requests
+- ~Store~ is type in which we store data from server
+- ~Config msg~ contains configuration for of the module (in reality it's record of functions, for simplification we're going to use a single function)
+- ~Msg~ is a sum type of a different types of messages requests generate.
 
-mocking all of those types with what is isomorphic to unit type but specialized to every case looks like this.
+mocking all of those types with types isomorphic to unit looks like this:
 
 #+BEGIN_SRC elm
 module Store exposing (..)
@@ -46,11 +46,12 @@ type Msg
     = Msg
 #+END_SRC
 
-This part of the Store module is not changing but it's important as the other code interacts with it.
+This part of the Store module is not changing between different implementations
+but it's important as the other code we're about to write uses those types.
 
-* Introduce Coupling via Sum and Pattern Matching
+* Version with sum type and pattern matching
 
-In "defunctionalized" code of this module continues as following:
+The "defunctionalized" version (the one proposed by Martin) follows as this:
 
 #+BEGIN_SRC elm
 type alias FetchConfig a b =
@@ -99,20 +100,15 @@ fetchMany actions config flags store =
         actions
 #+END_SRC
 
-~FetchConfig msg~ is sort of intermediate structure, product of all the things that
-are expected to differ for individual cases.
+I would highlight some properties of this approach to the problem:
 
-~fetch_~ is helper function translating the ~FlagConfig~ to other abstraction.
-In real code this calls another ~Store.Utils.fetch~ function and does nothing more than that.
+- ~FetchConfig msg~ is sort of intermediate structure, a product of all the data different for each type of request.
+- ~fetch_~ is a helper function translating the ~FlagConfig msg~ to another (not visible in this example) API.
+- ~FetchAction~ type is a point of coupling. Sum of all possible actions.
+- ~fetch~ does just a branching for different actions.
+- ~fetchMany~ folds actions and aggregates state and Commands.
 
-~FetchACtion~ type is a point of coupling. Sum of all possible actions. Every possible action must be and will
-become part of this type.
-
-~fetch~ does just a branching. For every single fetch it has to know the right set of configuration and delegates rest to the ~fetch_~.
-
-~fetchMany~ just folds actions over and aggregates state and Commands.
-
-And this is how the usage looks of the api of this module looks like
+And this is how the usage looks of the API of this module looks like:
 
 #+BEGIN_SRC elm
 module Main exposing ()
@@ -122,21 +118,15 @@ import Store exposing (Store(..), Flags(..))
 type Msg
     = StoreMsg Store.Msg
 
-
-storeConf : Store.Config Msg
-storeConf =
-    StoreMsg
-
-
 caller : ( Store, Cmd Msg )
 caller =
-    fetchMany [ Store.FetchFoo, Store.FetchBar ] storeConf Flags Store
+    Store.fetchMany [ Store.FetchFoo, Store.FetchBar ] StoreMsg Flags Store
 #+END_SRC
 
-caller is function that calls our API. I'm tempted to argue that putting the list argument as a last one
+Caller is a function that calls API of the Store module. I'm tempted to argue that putting the list argument as a last one
 would be better in this case as then it would be possible to first configure the function by applying arguments
 and than calling the function returned with different actions. Also in elm it would be possible to format
-it a bit nicely with `|>` like
+it a bit nicely with ~|>~ like
 
 #+BEGIN_SRC elm
 caller : ( Store, Cmd Msg )
@@ -145,13 +135,30 @@ caller =
       |> fetchMany configForA Flags Store
 #+END_SRC
 
+But in the reality we use yet another abstraction that expects the last value
+of the stateful module to be a last argument and this in reality this API is just fine.
+
 * Decoupling be Functions
 
-No matter how hard I try to look at the version with pattern matching over sum, I don't see in which it's better at all.
-For start the constructors are just constants (or functions for cases they take arguments). That means essentially same
-as, well, constants and functions. What is the problem though that this means our public api, the ~fetch~ function now
-couples all the individual constants together. Does it make anything simpler? Or is it more type-safe?
-No matter how hard I think about it I believe answer to both is simply *no*.
+No matter how hard I try to look at the version with pattern matching over the sum type, I don't see in which it's better (compare to what martin began with in his post).
+Data constructors are in essence just constants (or functions for cases they take arguments).
+The only thing which makes them different is that unlike regular constant, they start with
+uppercase not lowercase letter.
+
+So the data constructors are just like constants and functions.
+They just allow you to pattern match on them using ~case ... of~ expression.
+
+I think it's fair to say that arguing for API build around data constructors
+is therefore same as arguing for usage of pattern matching oriented implementation.
+But there are some other good arguments for using data over functions:
+
+- Serialization (over wire)
+- Equality and other properties that don't really work with functions
+- Debugging is simpler with data
+
+What seems like a problem though is that this means our public api, the ~fetch~ function,
+now couples all the individual cases together. Does it make anything simpler or is it more type-safe?
+No matter how hard I think about it I believe answer to both is simply no in this case.
 
 Let's forget the last block of text and see how it would look like if we would replace the ~FetchAction~ sum by
 individual constants. You can even think about it as a sort of reverse of types.
@@ -172,7 +179,7 @@ fetchBar : FetchAction
 fetchBar = Debug.todo "implement me"
 #+END_SRC
 
-We expect these thing to do everything so we're not going to need any `fetch` or `fetch_` helper.
+We expect these thing to do everything so we're not going to need any ~fetch~ or ~fetch_~ helper.
 
 #+BEGIN_QUOTE
 Besides we already have other abstraction in ~Store.Urils~ as mentioned above which is in fact the thing that
