@@ -117,7 +117,14 @@ table {
     }
 }
 
+
 .content {
+    @mixin meta-headline {
+        font-style: italic;
+        font-weight: bold;
+        font-size: 21px;
+    }
+
     img {
         display: block;
         max-width: 100%;
@@ -130,16 +137,24 @@ table {
         background-color: #f3fbfa;
 
         &::before {
+            @include meta-headline;
             content: 'Updates:';
-            font-style: italic;
-            font-weight: bold;
-            font-size: 21px;
         }
 
         a {
             color: #000000;
             border: none;
             text-decoration: underline;
+        }
+    }
+
+    .note {
+        border: 2px dashed #4bffe9;
+        padding: 0 20px 0;
+
+        & > p:first-child::before {
+            @include meta-headline;
+            content: "Note: "
         }
     }
 

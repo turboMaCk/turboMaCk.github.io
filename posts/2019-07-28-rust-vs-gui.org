@@ -260,7 +260,7 @@ But maybe we can create copy of label reference for each button like this:
 I'm using blocks to create the nested namespace so I don't have to be that creative with naming.
 But more importantly, the code above compiles and even works!
 
-#+BEGIN_QUOTE
+#+BEGIN_note
 Some might expect that this code won't work as we create independent clones of ~gtk::Label~.
 I believe this type (as any other Widget) is just a reference to some GTK object so
 cloning it means creating just another reference pointing to the same GTK runtime thing.
@@ -270,7 +270,7 @@ It won't work the second time and print runtime warning to the stderr.
 #+BEGIN_SRC bash
 (rust-gtk-counter:16318): Gtk-WARNING **: 17:54:30.775: Attempting to add a widget with type GtkLabel to a container of type GtkBox, but the widget is already inside a container of type GtkHeaderBar, please remove the widget from its existing container first.
 #+END_SRC
-#+END_QUOTE
+#+END_note
 
 * Adding the State
 
