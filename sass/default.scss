@@ -123,6 +123,29 @@ table {
         max-width: 100%;
         margin: 0 auto;
     }
+
+    .updates {
+        border: 1px solid #4bffe9;
+        padding: 10px 20px 0 20px;
+        background-color: #f3fbfa;
+
+        &::before {
+            content: 'Updates:';
+            font-style: italic;
+            font-weight: bold;
+            font-size: 21px;
+        }
+
+        a {
+            color: #000000;
+            border: none;
+            text-decoration: underline;
+        }
+    }
+
+    .underline {
+        text-decoration: underline;
+    }
 }
 
 .footnoteRef {
