@@ -17,15 +17,15 @@ talk about refactoring between functions and data.
 
 ...TBA
 
-The actual real world implementation is a quite involved but for the purpose of
-this post, we can simply mock it using types which are those:
+The actual implementation is a bit more involved but for the purpose of
+this post, we can simply mock it using types with these purposes:
 
 - ~Flags~ is a type contained app configuration and contains data necessary for creating requests
 - ~Store~ is a type in which we store data from server
 - ~Config msg~ contains configuration for of the module (in reality it's record of functions, for simplification we're going to use a single function)
 - ~Msg~ is a sum type of a different types of messages requests generate.
 
-mocking all of those types with types isomorphic to unit looks like this:
+mocking all of those with types isomorphic to unit looks like this:
 
 #+BEGIN_SRC elm
 module Store exposing (..)
@@ -46,18 +46,18 @@ type Msg
     = Msg
 #+END_SRC
 
-This part of the Store module is not changing between different implementations
+This part of the Store module is not changing in between different implementations
 but it's important as the other code we're about to write uses these types.
 
 #+BEGIN_note
 The fact that we're mocking with type wit dummy values will make the rest of the
-code look a bit useless. You will must simply believe me that all of this fits
-into working implementation.
+code look a bit useless. You must believe me that all of this fits
+into working implementation and has its purpose.
 #+END_note
 
-* Version with sum type and pattern matching
+* Version with Sum Type and Pattern Matching
 
-The /defunctionalized/ version (the one proposed by Martin) follows as this:
+The /defunctionalized/ version (the one proposed by Martin) follows like this:
 
 #+BEGIN_SRC elm
 type alias FetchConfig a b =
@@ -106,15 +106,15 @@ fetchMany actions config flags store =
         actions
 #+END_SRC
 
-I would highlight some properties of this approach to the problem:
+I would like to highlight some properties of this approach:
 
-- ~FetchConfig msg~ is sort of intermediate structure, a product of all the data different for each type of request.
+- ~FetchConfig msg~ is sort of intermediate structure, a product of all the data that differ for each type of request.
 - ~fetch_~ is a helper function translating the ~FlagConfig msg~ to another (not visible in this example) API.
 - ~FetchAction~ type is a point of coupling. Sum of all possible actions.
 - ~fetch~ does just a branching for different actions.
-- ~fetchMany~ folds actions and aggregates state and Commands.
+- ~fetchMany~ folds actions and aggregates state and commands.
 
-And this is how the usage looks of the API of this module looks like:
+And this is how the usage looks of this API looks like:
 
 #+BEGIN_SRC elm
 module Main exposing ()
@@ -132,7 +132,7 @@ caller =
 The ~caller~ is a function that calls API of the Store module.
 
 #+BEGIN_note
-I'm tempted to argue that putting the list argument as a last one
+Seeing this I'm tempted to argue that putting the list argument as a last one
 would be better in this case as then it would be possible to first configure the function by applying arguments
 and than calling the function returned with different actions. Also in elm it would be possible to format
 it a bit nicely with ~|>~ like
@@ -145,41 +145,41 @@ caller =
 #+END_SRC
 
 But in the reality we use yet another abstraction that expects the last value
-of the stateful module to be a last argument and this in reality this API is just fine.
+to be state of the store so this API is better.
 #+END_note
 
 No matter how hard I try to look at the version with pattern matching over the sum type,
-I don't see how this improves the API and even readability of this module.
-Data constructors are, in essence, just constants or functions for cases they take arguments.
-The only thing which makes them different is that unlike regular constant or functions is
-that their names start with uppercase not lowercase letter.
+I don't see how it makes things simpler. In fact I think the only benefit gained of doing all of this
+was just that in the process Martin reconstructed the functionality which helps with understanding it.
 
-So the data constructors are just like constants and functions?
-Well there is another thing that makes them different.
+Data constructors are, in essence, just constants and functions.
+The only thing which makes them different is that unlike regular constants and functions,
+their names start with an uppercase and not a lowercase letter.
+Well, there is another thing that makes them different.
 *Pattern matching is basically branching over data constructors*
-and thus is unique for case when working with data which are not functions.
+and thus is unique for cases when working with values other than functions and opaque aliases.
 
 #+BEGIN_note
 I think it's fair to say that arguing for API build around data constructors
-is therefore same or at least often same as arguing for usage of pattern matching
+is therefore same, or at least often same, as arguing for usage of pattern matching
 in the actual implementation.
-But there are some other good arguments for using data over functions:
+But there are some other (more or less) good arguments for using data over functions:
 
 - Serialization (over wire)[fn:1]
-- Equality and other properties that don't really work with functions[fn:2]
+- Equality, Ordering and other operations that can't work with functions[fn:2]
 - Debugging is simpler with data (printing)[fn:3]
 #+END_note
 
 * Decoupling by Continuations
 
-What seems like a problem to me though is that this means our public api, the ~fetch~ function,
+What seems like a problem to me is that this /defunctionalized/ API means our public API, the ~fetch~ function,
 now couples all the individual cases together.
 
-Let's forget the last block of text and see how it would look like if we would replace the ~FetchAction~ sum by
-individual constants. You can even think about it as a sort of reverse of types.
-Instead of having ~FetchAction~ type containing all the constants, we're going to have bunch of constants of the same type.
+Let's see how it would look like if we would replace the ~FetchAction~ sum by individual constants.
+Instead of having ~FetchAction~ type containing all the constants,
+we're going to have bunch of constants of the same type.
 
-First let's define the type, we don't need to worry about what this type is just yet.
+First we can define some type without worrying about what this type means just yet.
 
 #+BEGIN_SRC elm
 type FetchAction =
@@ -194,31 +194,31 @@ fetchBar : FetchAction
 fetchBar = Debug.todo "implement me"
 #+END_SRC
 
-We expect these thing to do everything so we're not going to need any ~fetch~ or ~fetch_~ helper.
+We expect these function to do everything so there is no need for ~fetch~ and ~fetch_~ helpers.
 
-#+BEGIN_note
-Besides we already have other abstraction in ~Store.Urils~ as mentioned above which is in fact the thing that
-does the real work for us.
-#+END_note
+Now when we know how our API should look like, let's fill the implementation details.
 
-Now when we know how our API should look like, let's fill the boring implementation in place.
-
-Starting with ~FetchData~ which is itself function.
+Starting with ~FetchData~ which is itself just a function:
 
 #+BEGIN_SRC elm
 type FetchAction msg =
     FetchAction (Config msg -> Flags -> Store -> ( Store, Cmd msg ))
 #+END_SRC
 
-I'm wrapping function to constructor for extra clarity that this is special function we
-can consider as being constant value in some sort of more abstract model in our head.
-In the end it's about first class functions so this function is value itself indeed.
+I'm wrapping function to a constructor for extra clarity to make it look more like a special value.
+
+Martin also mentions in his post (quote):
 
 #+BEGIN_QUOTE
-And now, because the fetchMany type annotation no longer contains any parameterized msg types, it simplifies all types that touch it to the point where we don't need to Cmd.map the Msg at all! That horrible piece of code becomes:
+And now, because the ~fetchMenu~ type annotation no longer contains any parameterized msg types,
+it simplifies all types that touch it to the point where we don't need to Cmd.map the Msg at all!
+That horrible piece of code becomes
 #+END_QUOTE
 
-Again sort of mocked implementation continues:
+And this is one the simplification that we will need to indeed give up.
+We need this polymorphism to make API abstract enough.
+
+The implementation against new ~FetchAction~ type might look like something like this.
 
 #+BEGIN_SRC elm
 fetchFoo : FetchAction msg
@@ -228,12 +228,108 @@ fetchFoo =
 
 
 fetchBar : FetchAction msg
-fetchBar toMsg Flags store =
+fetchBar =
     FetchAction <|
         \toMsg Flags Store -> ( store, Cmd.map toMsg Cmd.none )
 #+END_SRC
 
-In ~fetchManu~ we can just remove the function name ~fetch~ as the ~action~ argument
+#+BEGIN_note
+In my experience some folks has a bit of a difficulty with thinking about the code that involves
+working with functions. That is fine, everyone has certain bias and a different experience with things.
+I think though that it is rather easy to find enough connection between the familiar and unfamiliar stuff
+in most cases.
+
+So what's the secret? Just forget about functions and data. Everything is just value which you can reduce
+the problem space. When ever I have to deal with too many things at once I try to look for the pattern.
+If I see some repeating part like ~Foo -> Bar -> a -> List a~ I know I can replace this thing in a head
+with some place holder. And the only place where I really need to understand the detail of this is
+only when I bridge the level of abstraction to say function which is concerned of actually constructing the final value.
+
+This works well with full continuations or higher order functions in general.
+The key is to understand how two different things can be viewed as the same thing at some level
+of abstraction and then pick the right one for the level in which their differences do matter.
+
+In context of this article the important thing to understand is that:
+
+#+BEGIN_SRC elm
+  type Fruit
+      = Apple
+      | Orange
+
+
+  color : Fruit -> String
+  color fruit =
+      case fruit of
+          Apple ->
+              "green"
+
+          Oragne ->
+              "orange"
+#+END_SRC
+
+is on some level same as
+
+#+BEGIN_SRC elm
+  type alias Fruit =
+      { color : String }
+
+
+  apple : Fruit
+  apple =
+      { color = "green" }
+
+
+  orange : Fruit
+  orange =
+      { color = "orange" }
+#+END_SRC
+
+But their are different on another level.
+Defining fruit via sum crates a closed set of values.
+Defining it by a product of properties creates an open set of values.
+
+And even this is possible
+
+#+BEGIN_SRC elm
+  typ Fruit a =
+      Fruit a
+
+
+  getColor : (a -> String) -> Fruit a -> String
+  getColor f (Fruit a) =
+      f a
+
+
+  type MyFruit
+      = Apple
+      | Orange
+
+
+  type alias SpecialFruit =
+      Fruit MyFruit
+
+
+  specialFruitColor : SpecialFruit -> String
+  specialFruitColor =
+      (\myFruit ->
+          case myFruit of
+              Apple ->
+                  "green"
+
+              Orange ->
+                  "orange"
+      )
+          |> getColor
+#+END_SRC
+
+Even though this last example seems odd for a simple case like this,
+it makes the implementation even more opened than the second example.
+This is essentially how type classes are often simulated in languages which
+don't have them (like Elm).
+
+#+END_note
+
+In ~fetchMany~ we can just remove the function name ~fetch~ as the ~action~ argument
 now becomes sort of the action itself. We're also boxing the function itself to
 ~FetchAction~ constructor so we're going to need to extract it.
 
