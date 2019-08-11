@@ -373,8 +373,8 @@ It's even possible to define something like this:
       Fruit MyFruit
 
 
-  specialFruitColor : MyFruit -> String
-  specialFruitColor a =
+  specialFruit : MyFruit -> SpectilFruit
+  specialFruit a =
       (\myFruit ->
           case myFruit of
               Apple ->
@@ -384,7 +384,11 @@ It's even possible to define something like this:
                   "orange"
       )
           |> Fruit a
-          |> getColor
+
+
+  specialFruitColor : MyFruit -> String
+  specialFruitColor =
+      getColor << specialFruit
 #+END_SRC
 
 Even though this last example seems odd for a simple case like this,
