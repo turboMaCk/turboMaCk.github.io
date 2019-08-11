@@ -172,14 +172,14 @@ But there are some other (more or less) good arguments for using data over funct
 
 * Decoupling by Continuations
 
-What seems like a problem to me is that this /defunctionalized/ API means our public API, the ~fetch~ function,
-now couples all the individual cases together.
+What I dislike about this defunctionalized implementation is that the ~fetch~ function now couples all the individual usages together.
+Or using a different language, we can say that the API is closed over the ~FetchAction~ type.
 
 Let's see how it would look like if we would replace the ~FetchAction~ sum by individual constants.
-Instead of having ~FetchAction~ type containing all the constants,
+Instead of having ~FetchAction~ type containing all the constants (constructors),
 we're going to have bunch of constants of the same type.
 
-First we can define some type without worrying about what this type means just yet.
+First we just define a type without worrying about details.
 
 #+BEGIN_SRC elm
 type FetchAction =
@@ -197,7 +197,6 @@ fetchBar = Debug.todo "implement me"
 We expect these function to do everything so there is no need for ~fetch~ and ~fetch_~ helpers.
 
 Now when we know how our API should look like, let's fill the implementation details.
-
 Starting with ~FetchData~ which is itself just a function:
 
 #+BEGIN_SRC elm
@@ -205,20 +204,17 @@ type FetchAction msg =
     FetchAction (Config msg -> Flags -> Store -> ( Store, Cmd msg ))
 #+END_SRC
 
-I'm wrapping function to a constructor for extra clarity to make it look more like a special value.
-
-Martin also mentions in his post (quote):
+I'm wrapping function to a constructor for extra clarity --- to make it look more like a special value.
+Martin also mentions this in his post:
 
 #+BEGIN_QUOTE
 And now, because the ~fetchMenu~ type annotation no longer contains any parameterized msg types,
-it simplifies all types that touch it to the point where we don't need to Cmd.map the Msg at all!
-That horrible piece of code becomes
+it simplifies all types that touch it to the point where we don't need to ~Cmd.map~ the ~Msg~ at all!
 #+END_QUOTE
 
-And this is one the simplification that we will need to indeed give up.
-We need this polymorphism to make API abstract enough.
-
-The implementation against new ~FetchAction~ type might look like something like this.
+We will need to give up this simplification in our version.
+We need this polymorphism in our new API.
+The implementation for new ~FetchAction~ type might look like something like this:
 
 #+BEGIN_SRC elm
 fetchFoo : FetchAction msg
@@ -234,20 +230,18 @@ fetchBar =
 #+END_SRC
 
 #+BEGIN_note
-In my experience some folks has a bit of a difficulty with thinking about the code that involves
-working with functions. That is fine, everyone has certain bias and a different experience with things.
-I think though that it is rather easy to find enough connection between the familiar and unfamiliar stuff
-in most cases.
+If you have a difficult time dealing with a logic involving a lot of higher order functions tricks
+you might find this way of thinking useful.
 
-So what's the secret? Just forget about functions and data. Everything is just value which you can reduce
-the problem space. When ever I have to deal with too many things at once I try to look for the pattern.
-If I see some repeating part like ~Foo -> Bar -> a -> List a~ I know I can replace this thing in a head
-with some place holder. And the only place where I really need to understand the detail of this is
-only when I bridge the level of abstraction to say function which is concerned of actually constructing the final value.
+Just forget about functions and data and focus on values. Everything is just a value which you can further reduce and group.
+When ever I have to deal with too many things at once I try to look for some pattern.
+If I see some repeating part like ~Foo -> Bar -> a -> List a~ I know that I can reduce it in head to some ~Placeholder a~.
+The only place where you really need to understand the detail is
+when you bridge the level of abstraction where you need to concern yourself with individual pieces of this value.
 
-This works well with full continuations or higher order functions in general.
-The key is to understand how two different things can be viewed as the same thing at some level
-of abstraction and then pick the right one for the level in which their differences do matter.
+This works well with full-blown continuations or higher order functions in general.
+The key is to understand how two different things can be viewed as the same thing on some level
+of abstraction.
 
 In context of this article the important thing to understand is that:
 
@@ -284,11 +278,11 @@ is on some level same as
       { color = "orange" }
 #+END_SRC
 
-But their are different on another level.
-Defining fruit via sum crates a closed set of values.
-Defining it by a product of properties creates an open set of values.
+But both implementation are different on another level.
+Defining ~Fruit~ via sum crates a *closed set* of values.
+Defining it as a product of properties creates an *open set* of values.
 
-And even this is possible
+It's even possible to define something like this:
 
 #+BEGIN_SRC elm
   typ Fruit a =
@@ -323,63 +317,59 @@ And even this is possible
 #+END_SRC
 
 Even though this last example seems odd for a simple case like this,
-it makes the implementation even more opened than the second example.
-This is essentially how type classes are often simulated in languages which
-don't have them (like Elm).
+it sort of merges the properties of the two previous implementations.
+This is how sometimes type classes are simulated in languages which don't have them (like Elm).
 
+~Fruit a~ acts like a ~class~ of types. ~MyFruit~ is than sort of ~instance~ of this class.
+Obviously without first-class support for such abstraction it's usually impractical to work with.
+This is why in a language without higher order (ad hoc) polymorphism, it might be often
+favorable to avoid data in favor of keeping value set opened.
+
+In languages like Haskell or PureScript it's much easier to turn closed types to opened ones using
+things like [[https://hackage.haskell.org/package/free][Free]] or by utilizing type classes.
 #+END_note
 
-In ~fetchMany~ we can just remove the function name ~fetch~ as the ~action~ argument
-now becomes sort of the action itself. We're also boxing the function itself to
-~FetchAction~ constructor so we're going to need to extract it.
+In ~fetchMany~, we need just a simple change. We no longer need to call ~fetch~ function because our argument
+now becomes this function itself. Also since we're boxing the function into the ~FetchAction~ constructor,
+we're going to need to extract it first.
+
+#+BEGIN_SRC elm
+  fetchMany : List (FetchAction msg) -> Config msg -> Flags -> Store -> ( Store, Cmd msg )
+  fetchMany actions config flags store =
+      List.foldl
+          (\(FetchAction action) ( store_, cmd ) ->
+              let
+                  ( newStore, newCmd ) =
+                      action config flags store_
+              in
+              ( newStore, Cmd.batch [ cmd, newCmd ] )
+          )
+          ( store, Cmd.none )
+          actions
+#+END_SRC
 
 ~FetchAction~ type now has to be parametrized though the same way ~fetch~ function was in previous version.
 
-#+BEGIN_SRC elm
-fetchMany : List (FetchAction msg) -> Config msg -> Flags -> Store -> ( Store, Cmd msg )
-fetchMany actions config flags store =
-    List.foldl
-        (\(FetchAction action) ( store_, cmd ) ->
-            let
-                ( newStore, newCmd ) =
-                    action config flags store_
-            in
-            ( newStore, Cmd.batch [ cmd, newCmd ] )
-        )
-        ( store, Cmd.none )
-        actions
-#+END_SRC
-
-This function is almost identical to the one from the "defunctionalized" version.
-It just doesn't need to call any other function (~fetch~) so *if anything it's simpler*.
-
-Look at the usage now:
+And look at the usage now:
 
 #+BEGIN_SRC elm
-module Main exposing ()
+  import Store exposing (Store(..), Flags(..))
 
-import Store exposing (Store(..), Flags(..))
-
-type Msg
-    = StoreMsg Store.Msg
+  type Msg
+      = StoreMsg Store.Msg
 
 
-storeConf : Store.Config Msg
-storeConf =
-    StoreMsg
-
-
-caller : ( Store, Cmd Msg )
-caller =
-    fetchMany [ Store.fetchFoo, Store.fetchBar ] storeConf Flags Store
+  caller : ( Store, Cmd Msg )
+  caller =
+      fetchMany [ Store.fetchFoo, Store.fetchBar ] StoreMsg Flags Store
 #+END_SRC
 
-See the difference? It's just in ~Store.FetchFoo~ for "defunctionalized" version vs ~Store.fetchFoo~.
+See the difference? It's just ~Store.FetchFoo~ for "defunctionalized" version versus ~Store.fetchFoo~ in the new one.
 Is this more complicated in any way? I let you to be the judge.
 
 * Extensibility
 
-Since the second example doesn't contain tight coupling to the same sum type it can be quite easily composed even in Elm
+Since the second example doesn't contain tight coupling to the same sum type, it can be quite easily composed even in Elm
 where composition of data is much more restricted because of simple type system. For instance we can generalize
 Store module in a way it can be extended with additional data and fetch functions like in this example:
 
