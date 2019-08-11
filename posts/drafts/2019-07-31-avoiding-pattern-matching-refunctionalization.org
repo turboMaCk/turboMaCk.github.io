@@ -486,22 +486,29 @@ Simple as that.
 
 * Conclusion
 
-Continuations are powerful thing and especially in language where magic you can do with the data being limited,
-they might be the most composable gun in your arsenal. Sorry but function is the most powerful type of data you have.
+I hope I managed to demonstrates one reasonable use-case where avoiding pattern matching and data in favor of
+functions leads to more extensible implementation. This doesn't mean that pattern matching is bad in general.
+In fact it's a useful tool for modeling closed APIs. I'm personally leaning towards an opinion
+that branching over closed data is generally good in high level and low level code but not that much
+in the abstract souse in the middle of logic. In upper level, it's often desirable to
+dispatch the control between the blocks of program. In lower level logic, implementation details are being
+extracted and act upon. But it's likely that most of the stuff in the middle should be designed with extensibility
+provided by open design.
 
-Pattern matching generally leads to the coupling and usage of sum types leads to unnecessary branching.
-In some cases it's unavoidable or even desirable to do such thing but it in fact hurts the code
-in more cases than folks realize.
-In some sense we're making a full circle back to the days where C APIs that are using integer arguments for changing it's behavior were.
-We just have slightly more expressive tool to do so than integer is.
+By designing all the code around closed structures we're in some sense
+making a full circle back to C interfaces with integer arguments designed to changing behavior of implementation.
+We just have slightly more expressive tool to accomplish that.
 
-Some time ago I also created [[][elm-continue]] package which contains even more generalized abstraction
-for working with continuations than we used here. That's probably something to check if you're willing
-to go even slightly more crazy about patterns like this. I just must warn you that not everyone will like you for using it.
+Some time ago, I've also created [[https://package.elm-lang.org/packages/turboMaCk/elm-continue/latest/][elm-continue]], a package with even more generalized abstractions
+for working with continuations than we used here.
+I just must warn you, that not everyone from elm community would likely approve to use it.
 
-I honestly haven't enjoy writing this post much. First it might seem like a criticism, second I know a lot of people will disagree without even reading this far
-and lastly I personally consider all what I wrote here as painfully obvious and therefor not that interesting.
-The reason why I wrote this post anyway is the slight chance that someone will find this useful or interesting (looking at you Zdenko).
+I was honestly unsure if I should write this post.
+I was a bit afraid it will looks too much like a criticism of Martin's original article which is not my point at all.
+I also know a lot of people which will likely disagree with my feelings towards pattern matching and "over-usage" of a data.
+The reason why I wrote it in the end is that slight chance that someone will find this useful or interesting (looking at you Zdenko)
+and that maybe I manage to avoid unnecessary negative feelings around this. This doesn't mean you should avoid criticism.
+In the end it's just a tool of progress.
 
 [fn:1] Some languages like [[http://unisonweb.org][Unison]] are able to serialize functions.
 Unison specifically does so by sending the AST over the wire.
