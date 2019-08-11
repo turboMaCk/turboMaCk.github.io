@@ -1,7 +1,7 @@
 ---
 title: Avoiding Pattern Matching
-subtitle: Regaining open composability using refunctionalization
-description: TBA
+subtitle: Regaining open composability with refunctionalization
+description: Utilizing higher order functions for creating extensible decoupled APIs
 tags: elm, fp
 ---
 

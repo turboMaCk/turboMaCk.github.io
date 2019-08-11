@@ -1,7 +1,7 @@
 ---
 title: Deeper Dive To (Tail) Recursion - 2 Tail Calls
 subtitle: Boosting recursive algorithms
-description: Optimizing recursive functions using tail calls.
+description: Optimizing recursive functions using tail calls
 tags: functional-programming, haskell, erlang
 ---
 

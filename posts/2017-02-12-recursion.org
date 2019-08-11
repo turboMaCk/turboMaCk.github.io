@@ -1,7 +1,7 @@
 ---
 title: Deep Dive To (Tail) Recursion - 1 Intro
 subtitle: Recursion as one (if no the most) of important concepts.
-description: Why I believe recursion is one of most important concepts we have.
+description: Why I believe recursion is one of most important concepts we have
 tags: functional-programming, haskell, javascript
 ---
 
