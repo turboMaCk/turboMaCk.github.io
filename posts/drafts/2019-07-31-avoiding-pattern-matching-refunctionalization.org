@@ -13,28 +13,26 @@ The talk itself describes a sort of isomorphism between continuations and data a
 a way to refactor between the two. This is probably not so life changing information
 for experienced functional programmer as it might be for people with only imperative
 programming background but I recommend you to watch this talk especially because it
-establishes good bases and vocabulary for talking this relationship.
+establishes a good base and terminology for talking about this relationship.
 
-The talk also describes CSP which I in fact wanted to talk about in the last part
-of my "Deeper Dive To (Tail) Recursion" series of write-ups which I haven't finished
-as my focus shifted. You can find [[2017-02-12-recursion.html][Part 1]] and [[2017-04-09-tail-recursion.html][Part 2]] in [[../archive.html][archive]].
+The talk also describes relation on CSP and iteration, which is what I wanted to talk about in the last part
+of my "Deeper Dive To (Tail) Recursion" series of write-ups that I haven't finished
+as my focus shifted. You can find [[./2017-02-12-recursion.html][part 1]] and [[./2017-04-09-tail-recursion.html][part 2]] in [[../archive.html][archive]].
 
 I'm personally not a fan of "over-usage" of sum types and pattern matching and disagree
 that changes Martin describes in his post are better than the original code.
-I haven't planned to write a post about this in this shape though until
-another friend of mine asked me if I can try to write something about the topic we've discussed
-on several occations --- /Why I believe that the pattern matching is often misused
+But I haven't planned to write a post about this until
+another friend of mine asked me if I can write something about the topic we've together discussed
+on several occations --- /Why I believe that the pattern matching is often misus
 and why I think that in many cases it's desirable to avoid it completely./
 
 I'm going to use the code from Martin's article to describe what I believe is one common
 case of misuse of pattern matching and why I believe the implementation avoiding
 its usage is more composable and scalable. The only reason why I'm basing this
-write-up on the Martin's article is that this will offer reader to see
-two opposite views the same implementation.
+on the Martin's article is that this will offer reader to see
+two opposite views on the same example implementation.
 
-* Getting Started
-
-#+BEGIN_note
+#+BEGIN_vocabulary
 I'm going to use some terms in this post and as the terminology is often less clear
 that we might feel comfortable to sometimes admit it seems to fair to just briefly clarify what I mean by a few of those terms.
 
@@ -79,8 +77,10 @@ used within its interface.
 
 *Opened* implementation is an implementation using interface that doesn't restrict
 where and how the data it uses are constructed as long as some type contract is satisfied.
+#+END_vocabulary
 
-#+END_note
+
+* Getting Started
 
 The actual implementation is a bit more involved but for the purpose of
 this post, we can simply mock it using types with these purposes:

@@ -148,13 +148,28 @@ table {
         }
     }
 
-    .note {
+    @mixin note-style {
         border: 2px dashed #4bffe9;
         padding: 0 20px 0;
+    }
+
+    .note {
+        @include note-style;
 
         & > p:first-child::before {
             @include meta-headline;
-            content: "Note: "
+            content: "Note: ";
+        }
+    }
+
+    .vocabulary {
+        @include note-style;
+
+        &::before {
+            @include meta-headline;
+            display: block;
+            margin-top: 10px;
+            content: "Vocabulary";
         }
     }
 
