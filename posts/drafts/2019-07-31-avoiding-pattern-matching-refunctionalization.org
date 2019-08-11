@@ -352,13 +352,16 @@ Defining it as a product of properties creates an *open set* of values.
 It's even possible to define something like this:
 
 #+BEGIN_SRC elm
-  typ Fruit a =
-      Fruit a
+  module Main exposing (..)
 
 
-  getColor : (a -> String) -> Fruit a -> String
-  getColor f (Fruit a) =
-      f a
+  type Fruit a
+      = Fruit a (a -> String)
+
+
+  getColor : Fruit a -> String
+  getColor (Fruit val getColor_) =
+      getColor_ val
 
 
   type MyFruit
@@ -370,8 +373,8 @@ It's even possible to define something like this:
       Fruit MyFruit
 
 
-  specialFruitColor : SpecialFruit -> String
-  specialFruitColor =
+  specialFruitColor : MyFruit -> String
+  specialFruitColor a =
       (\myFruit ->
           case myFruit of
               Apple ->
@@ -380,6 +383,7 @@ It's even possible to define something like this:
               Orange ->
                   "orange"
       )
+          |> Fruit a
           |> getColor
 #+END_SRC
 
