@@ -463,24 +463,25 @@ And extend the store with custom data in the main module:
 
 This would not be possible with defunctionalized version.
 
-* Looking at Right Place
+* Looking at the Right Place
 
-Martin ends his post with showing the screenshot of a part of final diff.
-In this code section he simplifies a bit more involved code into an alias to Constructor.
-This code was also highlighted in the PR.
+Martin ends his post with showing the screenshot --- a part of final diff.
+In this code section he simplified code into an alias to data constructor.
+This code was also highlighted in the PR by a comment.
 
-I don't think this part has much to do with anything. Further more I think it's avoidable to do something
-like this in any shape or form. There I believe the original code was done badly.
+I don't think this part is significant in any way though. Further more I think it's avoidable to do something
+like this in any shape or form.
 
-this is about module which on init requests some data. we can emit ~FetchAction~
+Instead of emitting any type of intermediate command, I think the ~init~ function should look like this.
 
 #+BEGIN_SRC elm
-init : (List (FetchAction msg) -> Cmd msg) -> ((), Cmd msg)
-init fetch =
-    ((), fetch [Store.fetchFoo, Store.fetchBar] )
+  init : (List (FetchAction msg) -> Cmd msg) -> ( (), Cmd msg )
+  init fetchMany =
+      ( (), fetchMany [ Store.fetchFoo, Store.fetchBar ] )
 #+END_SRC
 
-now we don't need any special `Msg` in parent module. All we do is pass down the ~Store.fetchMany~ with applied arguments like Store and Flags.
+With this there won't be a need any special ~Msg~ in parent module.
+All we do is pass down the ~Store.fetchMany~ with applied arguments.
 Simple as that.
 
 * Conclusion
