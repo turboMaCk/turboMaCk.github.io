@@ -5,17 +5,82 @@ description: TBA
 tags: elm, fp
 ---
 
-I meant to write this post rather as a quick run through explanation of some of my ideas.
-Anyway I'm going to start with rather more detailed explanation of what motivates
-me to write this post in the first place and what is and what is not motivating me to write it.
-If you're not interested in reading this you can [[][skip right to the content itself]].
+A few days ago, my colleague [[https://twitter.com/janiczek][Martin Janiczek]] published a post on his blog called
+[[http://martin.janiczek.cz/clanek/defunctionalization-in-elm/][Defunctionalization in Elm]]. In the post he talks about applying technique from [[http://www.jameskoppel.com/][James Koppel]]'s talk
+[[https://www.youtube.com/watch?v=vNwukfhsOME][The Best Refactoring You've Never Heard Of]].
 
-Few days ago, my colleague [[https://twitter.com/janiczek][Martin Janiczek]] published a post on his blog called
-[[http://martin.janiczek.cz/clanek/defunctionalization-in-elm/][Defunctionalization in Elm]]. In the post he talks about applying something that
-was marketed as [[https://www.youtube.com/watch?v=vNwukfhsOME][The Best Refactoring You've Never Heard Of]] which is essentially
-talk about refactoring between functions and data.
+The talk itself describes a sort of isomorphism between continuations and data and
+a way to refactor between the two. This is probably not so life changing information
+for experienced functional programmer as it might be for people with only imperative
+programming background but I recommend you to watch this talk especially because it
+establishes good bases and vocabulary for talking this relationship.
 
-...TBA
+The talk also describes CSP which I in fact wanted to talk about in the last part
+of my "Deeper Dive To (Tail) Recursion" series of write-ups which I haven't finished
+as my focus shifted. You can find [[../2017-02-12-recursion.html][Part 1]] and [[../2017-04-09-tail-recursion.html][Part 2]] in [[../../archive.html][archive]].
+
+I'm personally not a fan of "over-usage" of sum types and pattern matching and disagree
+that changes Martin describes in his post are better than the original code.
+I haven't planned to write a post about this in this shape though until
+another friend of mine asked me if I can try to write something about the topic we've discussed
+on several occations --- /Why I believe that the pattern matching is often misused
+and why I think that in many cases it's desirable to avoid it completely./
+
+I'm going to use the code from Martin's article to describe what I believe is one common
+case of misuse of pattern matching and why I believe the implementation avoiding
+its usage is more composable and scalable. The only reason why I'm basing this
+write-up on the Martin's article is that this will offer reader to see
+two opposite views the same implementation.
+
+* Getting Started
+
+#+BEGIN_note
+I'm going to use some terms in this post and as the terminology is often less clear
+that we might feel comfortable to sometimes admit it seems to fair to just briefly clarify what I mean by a few of those terms.
+
+*Data* are constructed from primitive types. Functions are not data.
+
+A *function* is a pure[fn:1] mathematical computation.
+
+A *value* is any thing that can be passed or returned by a function.
+It can be either a datum or a function[fn:2].
+
+A *sum type* is a type in which final set of values is sum of declared cases:
+
+#+BEGIN_SRC elm
+type Bool = True | False
+-- bool has True or False values -> 2 constructors
+
+type Maybe a = Noting | Just a
+-- maybe is `1 + (1*a)` where a is number of constructors for a
+-- Maybe Bool is `1 + (1*2)` -> 3 (Nothing, Just True, Just False)
+#+END_SRC
+
+A *product type* is a type where final set of possible values is a product of all individual subtypes:
+
+#+BEGIN_SRC elm
+type MyPair = MyPair Bool Bool
+-- MyPair is a product of two Bools -> 2 * 2 -> 4
+
+type alias WithBool a = (a, Bool)
+-- WithBool is a * 2 where a is number of a constuctors
+#+END_SRC
+
+Records and tuples are a common way of constructing products.
+
+*Algebraic Data Type* is type constructed by combining sum and product to form the algebra of types and data.
+
+*Pattern matching* is a language feature that allows to deconstruct value of a type by extracting product types
+and branching on sum.
+
+
+*Closed* implementation is an implementation where the all valid inputs are predetermined by types
+used within its interface.
+
+*Opened* implementation is an implementation using interface that doesn't restrict
+where and how the data it uses are constructed as long as some type contract is satisfied.
+
+#+END_note
 
 The actual implementation is a bit more involved but for the purpose of
 this post, we can simply mock it using types with these purposes:
@@ -167,9 +232,9 @@ is therefore same, or at least often same, as arguing for usage of pattern match
 in the actual implementation.
 But there are some other (more or less) good arguments for using data over functions:
 
-- Serialization (over wire)[fn:1]
-- Equality, Ordering and other operations that can't work with functions[fn:2]
-- Debugging is simpler with data (printing)[fn:3]
+- Serialization (over wire)[fn:5]
+- Equality, Ordering and other operations that can't work with functions[fn:6]
+- Debugging is simpler with data (printing)[fn:7]
 #+END_note
 
 * Decoupling by Continuations
@@ -510,7 +575,12 @@ The reason why I wrote it in the end is that slight chance that someone will fin
 and that maybe I manage to avoid unnecessary negative feelings around this. This doesn't mean you should avoid criticism.
 In the end it's just a tool of progress.
 
-[fn:1] Some languages like [[http://unisonweb.org][Unison]] are able to serialize functions.
+[fn:1] In all turing complete languages (including functional ones) it's possible to define partial functions.
+Like a function that never terminates.
+
+[fn:2] This is true only in languages with higher order functions.
+
+[fn:5] Some languages like [[http://unisonweb.org][Unison]] are able to serialize functions.
 Unison specifically does so by sending the AST over the wire.
 Even much simpler techniques comes in mind. Languages with ~eval~
 (like most of the dynamic languages and almost all lisps (excluding clojure-script) has such function).
@@ -518,11 +588,11 @@ The primary concern here is a security and executing arbitrary code from some un
 is what is often called [[https://en.wikipedia.org/wiki/Arbitrary_code_execution][arbitrary code execution vunerability]]. Precisely because
 of the security It's always good idea to close APIs exposed to untrusted 3rd parties.
 
-[fn:2] Elm type system allows you to use equality operator (~(==)~) over any type
+[fn:6] Elm type system allows you to use equality operator (~(==)~) over any type
 but blows up in runtime with functions. Languages with higher order polymorphism
 or operator overloading won't are able to statically detect such cases and won't
 allow you to use equality over functions. I'm not aware of language which in which
 equality over function is possible but I believe in [[http://unisonweb.org][Unison]] it might be possible.
 
-[fn:3] By definition it will still help you to just a see an intermediate value but that might
+[fn:7] By definition it will still help you to just a see an intermediate value but that might
 be enough for certain problems. Debugging is usually not an issue with step in debugging.
