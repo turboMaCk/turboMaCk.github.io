@@ -17,7 +17,7 @@ establishes good bases and vocabulary for talking this relationship.
 
 The talk also describes CSP which I in fact wanted to talk about in the last part
 of my "Deeper Dive To (Tail) Recursion" series of write-ups which I haven't finished
-as my focus shifted. You can find [[../2017-02-12-recursion.html][Part 1]] and [[../2017-04-09-tail-recursion.html][Part 2]] in [[../../archive.html][archive]].
+as my focus shifted. You can find [[2017-02-12-recursion.html][Part 1]] and [[2017-04-09-tail-recursion.html][Part 2]] in [[../archive.html][archive]].
 
 I'm personally not a fan of "over-usage" of sum types and pattern matching and disagree
 that changes Martin describes in his post are better than the original code.
