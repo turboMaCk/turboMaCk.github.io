@@ -585,7 +585,7 @@ extracted and act upon. But it's likely that most of the stuff in the middle sho
 provided by open design.
 
 A good example of open API is [[https://package.elm-lang.org/packages/elm/html/latest/][elm/html]] which is opened using [[https://package.elm-lang.org/packages/elm/html/latest/Html#node][node]] constructor.
-It would be possible to define type ~Node~ and function operating with this closed sum type but it would be poor design choice.
+It would be possible to define type ~Node~ and functions operating with this closed sum type but it would be poor design choice.
 
 By designing all the code around closed structures we're in some sense
 making a full circle back to C interfaces with integer arguments designed to changing behavior of implementation.
