@@ -117,16 +117,18 @@ I would like to highlight some properties of this approach:
 And this is how the usage looks of this API looks like:
 
 #+BEGIN_SRC elm
-module Main exposing ()
+  module Main exposing (..)
 
-import Store exposing (Store(..), Flags(..))
+  import Store exposing (Flags, Store)
 
-type Msg
-    = StoreMsg Store.Msg
 
-caller : ( Store, Cmd Msg )
-caller =
-    Store.fetchMany [ Store.FetchFoo, Store.FetchBar ] StoreMsg Flags Store
+  type Msg
+      = StoreMsg Store.Msg
+
+
+  caller : ( Store, Cmd Msg )
+  caller =
+      Store.fetchMany [ Store.FetchFoo, Store.FetchBar ] StoreMsg Flags Store
 #+END_SRC
 
 The ~caller~ is a function that calls API of the Store module.
@@ -353,7 +355,10 @@ we're going to need to extract it first.
 And look at the usage now:
 
 #+BEGIN_SRC elm
-  import Store exposing (Store(..), Flags(..))
+  module Main exposing (..)
+
+  import Store exposing (Flags, Store)
+
 
   type Msg
       = StoreMsg Store.Msg
@@ -369,94 +374,94 @@ Is this more complicated in any way? I let you to be the judge.
 
 * Extensibility
 
-Since the second example doesn't contain tight coupling to the same sum type, it can be quite easily composed even in Elm
-where composition of data is much more restricted because of simple type system. For instance we can generalize
-Store module in a way it can be extended with additional data and fetch functions like in this example:
-
-Make store extensible record:
+Since the second example doesn't contain tight coupling to the same sum type, it can be quite easily extend by composition.
+For instance we can generalize the ~Store~ module to work with extensible record:
 
 #+BEGIN_SRC elm
-module Store exposing (..)
+  module Store exposing (..)
 
 
-type Flags
-    = Flags
+  type Flags
+      = Flags
 
 
-type alias Store r =
-    { r | x : () }
+  type alias Store r =
+      { r | x : () }
 
 
-type alias Config msg =
-    Msg -> msg
+  type alias Config msg =
+      Msg -> msg
 
 
-type Msg
-    = Msg
+  type Msg
+      = Msg
 
 
-
--- New API
-
-
-type FetchAction msg r
-    = FetchAction (Config msg -> Flags -> Store r -> ( Store r, Cmd msg ))
+  type FetchAction msg r
+      = FetchAction (Config msg -> Flags -> Store r -> ( Store r, Cmd msg ))
 
 
-fetchFoo : FetchAction msg r
-fetchFoo =
-    FetchAction <|
-        \toMsg Flags store -> ( store, Cmd.map toMsg Cmd.none )
+  fetchFoo : FetchAction msg r
+  fetchFoo =
+      FetchAction <|
+          \toMsg Flags store -> ( store, Cmd.map toMsg Cmd.none )
 
 
-fetchBar : FetchAction msg r
-fetchBar =
-    FetchAction <|
-        \toMsg Flags store -> ( store, Cmd.map toMsg Cmd.none )
+  fetchBar : FetchAction msg r
+  fetchBar =
+      FetchAction <|
+          \toMsg Flags store -> ( store, Cmd.map toMsg Cmd.none )
 
 
-fetchMany : List (FetchAction msg r) -> Config msg -> Flags -> Store r -> ( Store r, Cmd msg )
-fetchMany actions config flags store =
-    List.foldl
-        (\(FetchAction action) ( store_, cmd ) ->
-            let
-                ( newStore, newCmd ) =
-                    action config flags store_
-            in
-            ( newStore, Cmd.batch [ cmd, newCmd ] )
-        )
-        ( store, Cmd.none )
-        actions
+  fetchMany : List (FetchAction msg r) -> Config msg -> Flags -> Store r -> ( Store r, Cmd msg )
+  fetchMany actions config flags store =
+      List.foldl
+          (\(FetchAction action) ( store_, cmd ) ->
+              let
+                  ( newStore, newCmd ) =
+                      action config flags store_
+              in
+              ( newStore, Cmd.batch [ cmd, newCmd ] )
+          )
+          ( store, Cmd.none )
+          actions
 #+END_SRC
 
-Extend the store with custom data in main module:
+And extend the store with custom data in the main module:
 
 #+BEGIN_SRC elm
-module Main exposing ()
+  module Main exposing (..)
 
-import Store exposing (Store(..), Flags(..))
-
-
-type Msg
-    = StoreMsg Msg
+  import Store exposing (Flags, Store)
 
 
-type alias ExtendedStore =
-    { x : (), y : () }
+  type Msg
+      = StoreMsg Msg
 
 
-caller : ( ExtendedStore, Cmd Msg )
-caller =
-    fetchMany [ fetchFoo, fetchBar, fetchBaz ] StoreMsg Flags { x = (), y = () }
+  type alias ExtendedStore =
+      { x : (), y : () }
 
 
-fetchBaz : FetchAction msg ExtendedStore
-fetchBaz =
-    Store.FetchAction <|
-        \toMsg Flags store -> ( store, Cmd.map toMsg Cmd.none )
+  caller : ( ExtendedStore, Cmd Msg )
+  caller =
+      Store.fetchMany
+          [ Store.fetchFoo
+          , Store.fetchBar
+          , fetchBaz
+          ]
+          StoreMsg
+          Flags
+          { x = (), y = () }
+
+
+  fetchBaz : FetchAction msg ExtendedStore
+  fetchBaz =
+      Store.FetchAction <|
+          \toMsg Flags store -> ( store, Cmd.map toMsg Cmd.none )
 #+END_SRC
 
-This would not be possible with previous example.
+This would not be possible with defunctionalized version.
 
 * Looking at Right Place
 
