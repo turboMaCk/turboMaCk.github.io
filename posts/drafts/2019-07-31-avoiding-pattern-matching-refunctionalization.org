@@ -584,6 +584,9 @@ dispatch the control between the blocks of program. In lower level logic, implem
 extracted and act upon. But it's likely that most of the stuff in the middle should be designed with extensibility
 provided by open design.
 
+A good example of open API is [[https://package.elm-lang.org/packages/elm/html/latest/][elm/html]] which is opened using [[https://package.elm-lang.org/packages/elm/html/latest/Html#node][node]] constructor.
+It would be possible to define type `Node` and function operating on this closed sum type but it would be poor design choice.
+
 By designing all the code around closed structures we're in some sense
 making a full circle back to C interfaces with integer arguments designed to changing behavior of implementation.
 We just have slightly more expressive tool to accomplish that.
