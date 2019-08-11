@@ -373,7 +373,7 @@ It's even possible to define something like this:
       Fruit MyFruit
 
 
-  specialFruit : MyFruit -> SpectilFruit
+  specialFruit : MyFruit -> SpecialFruit
   specialFruit a =
       (\myFruit ->
           case myFruit of
@@ -386,9 +386,25 @@ It's even possible to define something like this:
           |> Fruit a
 
 
-  specialFruitColor : MyFruit -> String
-  specialFruitColor =
-      getColor << specialFruit
+  type MyFruit2
+      = Rapsberry
+
+
+  type alias OtherFruit =
+      Fruit MyFruit2
+
+
+  repsberry : OtherFruit
+  repsberry =
+      always "red"
+          |> Fruit Rapsberry
+
+
+  caller : List String
+  caller =
+      [ getColor <| specialFruit Orange
+      , getColor repsberry
+      ]
 #+END_SRC
 
 Even though this last example seems odd for a simple case like this,
