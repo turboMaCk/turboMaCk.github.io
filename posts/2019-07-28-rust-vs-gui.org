@@ -19,7 +19,7 @@ I made a few updates based on the discussion:
 
 - Avoiding the use the old project name ~GTK+~ as it's now called just ~GTK~
 - Make operations with state truly atomic (thanks [[https://www.reddit.com/r/rust/comments/clkcba/building_gtk_app_in_rust_for_a_first_time/evw8ojp/][JayDepp]])
-- Mention PopOS' [[https://github.com/pop-os/firmware-manager][Firmware Manager]] and [[https://www.reddit.com/r/rust/comments/clkcba/building_gtk_app_in_rust_for_a_first_time/evx77ok/][mmstick's comment]] Mention the [[https://github.com/xi-editor/druid][druid project]]
+- Mention PopOS' [[https://github.com/pop-os/firmware-manager][Firmware Manager]] and [[https://www.reddit.com/r/rust/comments/clkcba/building_gtk_app_in_rust_for_a_first_time/evx77ok/][mmstick's comment]] and the [[https://github.com/xi-editor/druid][druid project]]
 #+END_updates
 
 GUI development is a special beast. I consider it to be an interesting use-case as
