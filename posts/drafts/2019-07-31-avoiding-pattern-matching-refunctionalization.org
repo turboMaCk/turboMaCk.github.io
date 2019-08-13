@@ -6,35 +6,37 @@ tags: elm, fp
 ---
 
 A few days ago, my colleague [[https://twitter.com/janiczek][Martin Janiczek]] published a post on his blog called
-[[http://martin.janiczek.cz/clanek/defunctionalization-in-elm/][Defunctionalization in Elm]]. In the post he talks about applying technique from [[http://www.jameskoppel.com/][James Koppel]]'s talk
+[[http://martin.janiczek.cz/clanek/defunctionalization-in-elm/][Defunctionalization in Elm]]. In the post, he talks about applying technique from [[http://www.jameskoppel.com/][James Koppel]]'s talk
 [[https://www.youtube.com/watch?v=vNwukfhsOME][The Best Refactoring You've Never Heard Of]].
 
 The talk itself describes a sort of isomorphism between continuations and data and
-a way to refactor between the two. This is probably not so life changing information
-for experienced functional programmer as it might be for people with only imperative
+a way to refactor between the two. This is probably not very life changing information
+for experienced functional programmer sas it might be for people with only imperative
 programming background but I recommend you to watch this talk especially because it
 establishes a good base and terminology for talking about this relationship.
 
-The talk also describes relation on CSP and iteration, which is what I wanted to talk about in the last part
+The talk also describes a relation between CSP and iteration, which is what I wanted to talk about in the last part
 of my "Deeper Dive To (Tail) Recursion" series of write-ups that I haven't finished
 as my focus shifted. You can find [[./2017-02-12-recursion.html][part 1]] and [[./2017-04-09-tail-recursion.html][part 2]] in [[../archive.html][archive]].
 
-I'm personally not a fan of "over-usage" of sum types and pattern matching and disagree
+I'm personally not a fan of "over-usage" of sum types and pattern matching and I disagree
 that changes Martin describes in his post are better than the original code.
 But I haven't planned to write a post about this until
-another friend of mine asked me if I can write something about the topic we've together discussed
-on several occations --- /Why I believe that the pattern matching is often misus
+another friend of mine asked me if I can write something about the topic we've discussed together
+on several occations --- /Why I believe that the pattern matching is often misused
 and why I think that in many cases it's desirable to avoid it completely./
 
 I'm going to use the code from Martin's article to describe what I believe is one common
-case of misuse of pattern matching and why I believe the implementation avoiding
+case of misuse of pattern matching and why I believe that the implementation avoiding
 its usage is more composable and scalable. The only reason why I'm basing this
-on the Martin's article is that this will offer reader to see
-two opposite views on the same example implementation.
+on Martin's article is that this will offer the reader to see
+two opposite views on the same example implementation. That will also help rthe eader to see,
+that in fact, there is a trade-off when making design decisions like this one.
 
 #+BEGIN_vocabulary
-I'm going to use some terms in this post and as the terminology is often less clear
-that we might feel comfortable to sometimes admit it seems to fair to just briefly clarify what I mean by a few of those terms.
+I'm going to use some terms in this post. I'll try my best to at least use these terms consistently
+within the scope of this article.
+Just keep in mind that this is just a blog post and not an academic article though so expect simplifications.
 
 *Data* are constructed from primitive types. Functions are not data.
 
@@ -54,6 +56,8 @@ type Maybe a = Noting | Just a
 -- Maybe Bool is `1 + (1*2)` -> 3 (Nothing, Just True, Just False)
 #+END_SRC
 
+Enums and all primitive data are sums. Like a bit being either 0 or 1 but not both at the same time[fn:3].
+
 A *product type* is a type where final set of possible values is a product of all individual subtypes:
 
 #+BEGIN_SRC elm
@@ -66,13 +70,12 @@ type alias WithBool a = (a, Bool)
 
 Records and tuples are a common way of constructing products.
 
-*Algebraic Data Type* is type constructed by combining sum and product to form the algebra of types and data.
+*Algebraic Data Type* is a type constructed using sums, products and combinations of both.
 
-*Pattern matching* is a language feature that allows to deconstruct value of a type by extracting product types
-and branching on sum.
+*Pattern matching* is a language feature that allows to deconstruct value of a type by extracting parts of product
+and branching over sum.
 
-
-*Closed* implementation is an implementation where the all valid inputs are predetermined by types
+*Closed* implementation is an implementation where all valid inputs are predetermined by types
 used within its interface.
 
 *Opened* implementation is an implementation using interface that doesn't restrict
@@ -111,7 +114,7 @@ type Msg
     = Msg
 #+END_SRC
 
-This part of the Store module is not changing in between different implementations
+This part of the Store module is not changing in between different implementations,
 but it's important as the other code we're about to write uses these types.
 
 #+BEGIN_note
@@ -216,8 +219,8 @@ to be state of the store so this API is better.
 #+END_note
 
 No matter how hard I try to look at the version with pattern matching over the sum type,
-I don't see how it makes things simpler. In fact I think the only benefit gained of doing all of this
-was just that in the process Martin reconstructed the functionality which helps with understanding it.
+I don't see how it makes things simpler. In fact, I think the only benefit gained from doing all of this
+was just that in the process, Martin reconstructed the functionality which helps with understanding it.
 
 Data constructors are, in essence, just constants and functions.
 The only thing which makes them different is that unlike regular constants and functions,
@@ -237,16 +240,15 @@ But there are some other (more or less) good arguments for using data over funct
 - Debugging is simpler with data (printing)[fn:7]
 #+END_note
 
-* Decoupling by Continuations
+* Decoupling by Refunctionalization
 
-What I dislike about this defunctionalized implementation is that the ~fetch~ function now couples all the individual usages together.
-Or using a different language, we can say that the API is closed over the ~FetchAction~ type.
+What I dislike about this defunctionalized implementation is that the ~fetch~ function now couples all the individual usages together. In other words, we can say that the API is closed over the ~FetchAction~ type.
 
-Let's see how it would look like if we would replace the ~FetchAction~ sum by individual constants.
+Let's see how it would look like if we replaced the ~FetchAction~ sum by individual constants.
 Instead of having ~FetchAction~ type containing all the constants (constructors),
-we're going to have bunch of constants of the same type.
+we're going to have a bunch of constants of the same type.
 
-First we just define a type without worrying about details.
+First, we just define a type without worrying about details.
 
 #+BEGIN_SRC elm
 type FetchAction =
@@ -261,7 +263,7 @@ fetchBar : FetchAction
 fetchBar = Debug.todo "implement me"
 #+END_SRC
 
-We expect these function to do everything so there is no need for ~fetch~ and ~fetch_~ helpers.
+We expect these functions to do everything so there is no need for ~fetch~ and ~fetch_~ helpers.
 
 Now when we know how our API should look like, let's fill the implementation details.
 Starting with ~FetchData~ which is itself just a function:
@@ -271,7 +273,7 @@ type FetchAction msg =
     FetchAction (Config msg -> Flags -> Store -> ( Store, Cmd msg ))
 #+END_SRC
 
-I'm wrapping function to a constructor for extra clarity --- to make it look more like a special value.
+I'm wrapping a function to a constructor for extra clarity --- to make it look more like a special value.
 Martin also mentions this in his post:
 
 #+BEGIN_QUOTE
@@ -297,11 +299,11 @@ fetchBar =
 #+END_SRC
 
 #+BEGIN_note
-If you have a difficult time dealing with a logic involving a lot of higher order functions tricks
+If you have a difficult time dealing with the logic involving a lot of higher order function tricks,
 you might find this way of thinking useful.
 
 Just forget about functions and data and focus on values. Everything is just a value which you can further reduce and group.
-When ever I have to deal with too many things at once I try to look for some pattern.
+Whenever I have to deal with too many things at once, I try to look for some pattern.
 If I see some repeating part like ~Foo -> Bar -> a -> List a~ I know that I can reduce it in head to some ~Placeholder a~.
 The only place where you really need to understand the detail is
 when you bridge the level of abstraction where you need to concern yourself with individual pieces of this value.
@@ -310,7 +312,7 @@ This works well with full-blown continuations or higher order functions in gener
 The key is to understand how two different things can be viewed as the same thing on some level
 of abstraction.
 
-In context of this article the important thing to understand is that:
+In context of this article, the important thing to understand is that:
 
 #+BEGIN_SRC elm
   type Fruit
@@ -346,7 +348,7 @@ is on some level same as
 #+END_SRC
 
 But both implementation are different on another level.
-Defining ~Fruit~ via sum crates a *closed set* of values.
+Defining ~Fruit~ via sum creates a *closed set* of values.
 Defining it as a product of properties creates an *open set* of values.
 
 It's even possible to define something like this:
@@ -409,19 +411,19 @@ It's even possible to define something like this:
 
 Even though this last example seems odd for a simple case like this,
 it sort of merges the properties of the two previous implementations.
-This is how sometimes type classes are simulated in languages which don't have them (like Elm).
+This is how type classes are sometimes simulated in languages which don't have them (like Elm).
 
-~Fruit a~ acts like a ~class~ of types. ~MyFruit~ is than sort of ~instance~ of this class.
-Obviously without first-class support for such abstraction it's usually impractical to work with.
+~Fruit a~ acts like a ~class~ of types. ~MyFruit~ is then sort of ~instance~ of this class.
+Obviously, without first-class support for such abstraction, it's usually impractical to work with it.
 This is why in a language without higher order (ad hoc) polymorphism, it might be often
 favorable to avoid data in favor of keeping value set opened.
 
-In languages like Haskell or PureScript it's much easier to turn closed types to opened ones using
+In languages like Haskell or PureScript, it's much easier to turn closed types to opened ones using
 things like [[https://hackage.haskell.org/package/free][Free]] or by utilizing type classes.
 #+END_note
 
-In ~fetchMany~, we need just a simple change. We no longer need to call ~fetch~ function because our argument
-now becomes this function itself. Also since we're boxing the function into the ~FetchAction~ constructor,
+In ~fetchMany~, we only need a simple change. We no longer need to call ~fetch~ function because our argument
+now becomes this function itself. Also, since we're boxing the function into the ~FetchAction~ constructor,
 we're going to need to extract it first.
 
 #+BEGIN_SRC elm
@@ -439,7 +441,7 @@ we're going to need to extract it first.
           actions
 #+END_SRC
 
-~FetchAction~ type now has to be parametrized though the same way ~fetch~ function was in previous version.
+~FetchAction~ type now has to be parametrized though the same way ~fetch~ function was in the previous version.
 
 And look at the usage now:
 
@@ -459,7 +461,7 @@ And look at the usage now:
 #+END_SRC
 
 See the difference? It's just ~Store.FetchFoo~ for "defunctionalized" version versus ~Store.fetchFoo~ in the new one.
-Is this more complicated in any way? I let you to be the judge.
+Is this more complicated in any way? I let you be the judge.
 
 * Extensibility
 
@@ -555,10 +557,10 @@ This would not be possible with defunctionalized version.
 * Looking at the Right Place
 
 Martin ends his post with showing the screenshot --- a part of final diff.
-In this code section he simplified code into an alias to data constructor.
+In this code section, he simplified code into an alias to data constructor.
 This code was also highlighted in the PR by a comment.
 
-I don't think this part is significant in any way though. Further more I think it's avoidable to do something
+I don't think this part is significant in any way though. Furthermore, I think it's avoidable to do something
 like this in any shape or form.
 
 Instead of emitting any type of intermediate command, I think the ~init~ function should look like this.
@@ -569,7 +571,7 @@ Instead of emitting any type of intermediate command, I think the ~init~ functio
       ( (), fetchMany [ Store.fetchFoo, Store.fetchBar ] )
 #+END_SRC
 
-With this there won't be a need any special ~Msg~ in parent module.
+With this, there won't need any special ~Msg~ in parent module.
 All we do is pass down the ~Store.fetchMany~ with applied arguments.
 Simple as that.
 
@@ -577,49 +579,52 @@ Simple as that.
 
 I hope I managed to demonstrates one reasonable use-case where avoiding pattern matching and data in favor of
 functions leads to more extensible implementation. This doesn't mean that pattern matching is bad in general.
-In fact it's a useful tool for modeling closed APIs. I'm personally leaning towards an opinion
+In fact, it's a useful tool for modeling closed APIs. I'm personally leaning towards an opinion
 that branching over closed data is generally good in high level and low level code but not that much
-in the abstract souse in the middle of logic. In upper level, it's often desirable to
+in the abstract source in the middle of logic. In upper level, it's often desirable to
 dispatch the control between the blocks of program. In lower level logic, implementation details are being
-extracted and act upon. But it's likely that most of the stuff in the middle should be designed with extensibility
+extracted and acted upon. But it's likely that most of the stuff in the middle should be designed with extensibility
 provided by open design.
 
 A good example of open API is [[https://package.elm-lang.org/packages/elm/html/latest/][elm/html]] which is opened using [[https://package.elm-lang.org/packages/elm/html/latest/Html#node][node]] constructor.
-It would be possible to define type ~Node~ and functions operating with this closed sum type but it would be poor design choice.
+It would be possible to define type ~Node~ and functions operating with this closed sum type but it would be a poor design choice.
 
-By designing all the code around closed structures we're in some sense
+By designing all the code around closed structures, we're in some sense
 making a full circle back to C interfaces with integer arguments designed to changing behavior of implementation.
 We just have slightly more expressive tool to accomplish that.
 
 Some time ago, I've also created [[https://package.elm-lang.org/packages/turboMaCk/elm-continue/latest/][elm-continue]], a package with even more generalized abstractions
 for working with continuations than we used here.
-I just must warn you, that not everyone from elm community would likely approve to use it.
+I just must warn you, that not everyone from elm community would likely approve of using it.
 
 I was honestly unsure if I should write this post.
-I was a bit afraid it will looks too much like a criticism of Martin's original article which is not my point at all.
-I also know a lot of people which will likely disagree with my feelings towards pattern matching and "over-usage" of a data.
-The reason why I wrote it in the end is that slight chance that someone will find this useful or interesting (looking at you Zdenko)
+I was a bit afraid that it will looks too much like a criticism of Martin's original article which is not my point at all.
+I also know a lot of people who will likely disagree with my feelings towards pattern matching and "over-usage" of data.
+The reason why I wrote it in the end is the slight chance that someone will find this useful or interesting (looking at you, Zdenko)
 and that maybe I manage to avoid unnecessary negative feelings around this. This doesn't mean you should avoid criticism.
-In the end it's just a tool of progress.
+In the end, it's just a tool of progress.
 
-[fn:1] In all turing complete languages (including functional ones) it's possible to define partial functions.
-Like a function that never terminates.
+
+[fn:1] In any turing complete language (including functional ones), it's possible to define partial functions.
+Like functions that never terminate.
 
 [fn:2] This is true only in languages with higher order functions.
+
+[fn:3] All hail the quantum universe.
 
 [fn:5] Some languages like [[http://unisonweb.org][Unison]] are able to serialize functions.
 Unison specifically does so by sending the AST over the wire.
 Even much simpler techniques comes in mind. Languages with ~eval~
 (like most of the dynamic languages and almost all lisps (excluding clojure-script) has such function).
-The primary concern here is a security and executing arbitrary code from some unknown source
+The primary concern here is security and executing arbitrary code from some unknown source
 is what is often called [[https://en.wikipedia.org/wiki/Arbitrary_code_execution][arbitrary code execution vunerability]]. Precisely because
-of the security It's always good idea to close APIs exposed to untrusted 3rd parties.
+of the security, it's always a good idea to close APIs exposed to untrusted 3rd parties.
 
 [fn:6] Elm type system allows you to use equality operator (~(==)~) over any type
 but blows up in runtime with functions. Languages with higher order polymorphism
-or operator overloading won't are able to statically detect such cases and won't
-allow you to use equality over functions. I'm not aware of language which in which
-equality over function is possible but I believe in [[http://unisonweb.org][Unison]] it might be possible.
+or operator overloading won't be able to statically detect such cases and won't
+allow you to use equality over functions. I'm not aware of any language in which
+equality over function is possible but I believe in [[http://unisonweb.org][Unison]], it might be possible.
 
-[fn:7] By definition it will still help you to just a see an intermediate value but that might
+[fn:7] By definition, it will still help you to just see an intermediate value but that might
 be enough for certain problems. Debugging is usually not an issue with step in debugging.
