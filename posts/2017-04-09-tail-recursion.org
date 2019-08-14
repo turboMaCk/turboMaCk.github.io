@@ -8,9 +8,11 @@ tags: functional-programming, haskell, erlang
 In [[./2017-02-12-recursion.html][part #1]] of this series I wrote about reasons why I think recursion is important and try to reevaluate on this topic a bit.
 This time I would like to finally focus on *tail recursion* itself.
 
-*Note:* One of occasions I've been discussing tail recursion was when I was staying in hotel in London with one of my colleagues.
+#+BEGIN_note
+One of occasions on which I've been discussing tail recursion was when I was staying in hotel in London with one of my colleagues.
 Original conversation we had was about [[https://en.wikipedia.org/wiki/Prolog][Prolog]] therefor I've wrote original examples in Erlang (since I don't know Prolog at all but know that Erlang's syntax is based on it).
 Anyway I'll also add few examples in other languages to make this article a bit more interesting.
+#+END_note
 
 * Tail Recursion
 
@@ -157,9 +159,11 @@ See that there is nothing we have wait for? Result of this expression is just re
 Let's continue. Next call will look like this ~tail_length([3], 1 + 1) = tail_length([3], 2)~ because length of head is always one we just need to add 1 to length of previous heads every time we don't match empty list.
 And finally last call matches 2 cause which evaluates ~2 + 1 = 3~ and this is our result.
 
-*Note:* You can see I'm using term ~tail~ a lot. Once again this has nothing to do with tail-recursion itself but rather with list we are using in examples.
+#+BEGIN_note
+You can see I'm using term ~tail~ a lot. Once again this has nothing to do with tail-recursion itself but rather with list we are using in examples.
 This might be a bit confusing but even though recursion is common while working with lists it's really not the only place where we are speaking about (tail) recursion.
 This is why I used factorial as first example.
+#+END_note
 
 So far we have 2 nice little examples of tail recursion in Erlang. However you can easily transform all of this to any other language
 (even to one which has no tail recursive optimization build in if you want - but don't expect any better characteristics than).

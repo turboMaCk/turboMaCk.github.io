@@ -37,10 +37,12 @@ where ~-r~ means apply command ~rm~ recursively to all sub files and sub folders
 
 where function contains call to itself.
 
-*Note:* ~length()~ implementation is just used for demonstration purposes. Please don't try to use it in real world!
+#+BEGIN_note
+~length()~ implementation is just used for demonstration purposes. Please don't try to use it in real world!
 There are many problems with the code above. Performance will be really bad and also function will cause mutations
 in original array which becomes empty after being passed to the function due to ~pop()~ call! If you thinking about
 using something similar in your code base ~fuckUpLength~ would be probably better name for such function.
+#+END_note
 
 *** Algebraic Data Types
 
@@ -102,8 +104,10 @@ Let's rewrite ~length()~ implementation from previous examples using loop.
   }
 #+END_SRC
 
-*Note:* Even this implementation of length is bad. Function still performs mutation on array using ~pop()~.
+#+BEGIN_note
+Even this implementation of length is bad. Function still performs mutation on array using ~pop()~.
 Please do not use such code for anything but learning.
+#+END_note
 
 Loops are so widely used technique that many programmers kind of defaults to it. This is probably because most widely used
 languages derives more or less from C (think about C++, Java, C#, JavaScript...). Anyway I would say this is huge tradeoff.
@@ -122,7 +126,9 @@ Nevertheless I still think that recursion over power any other concept and shoul
 
 Even most [[https://en.wikipedia.org/wiki/Dynamic_programming][dynamic programming]] practices often starts with recursive definition and translates that implementation to loop just to gain better performance characteristics later.
 
-*Note:* In case you're interested learning more about dynamic programming I recommend to look at [[https://www.youtube.com/watch?v=OQ5jsbhAv_M&list=PLfMspJ0TLR5HRFu2kLh3U4mvStMO8QURm][MIT's public Introduction to Algorithms]].
+#+BEGIN_note
+In case you're interested learning more about dynamic programming I recommend to look at [[https://www.youtube.com/watch?v=OQ5jsbhAv_M&list=PLfMspJ0TLR5HRFu2kLh3U4mvStMO8QURm][MIT's public Introduction to Algorithms]].
+#+END_note
 
 There is still one issue using technique like dynamic programming in my opinion. Once you optimize code to loops
 it's stay that way. This means every time you or anyone else will need to tweak something in you're code youl'll need to walk through
