@@ -332,6 +332,7 @@ In context of this article, the important thing to understand is that:
 is on some level same as
 
 #+BEGIN_SRC elm
+  -- In Elm we get `.color : Fruit -> String` for free
   type alias Fruit =
       { color : String }
 
@@ -400,7 +401,7 @@ It's even possible to define something like this:
 
   caller : List String
   caller =
-      List.map getColor [ specialFruit Orange, getColor repsberry ]
+      List.map getColor [ specialFruit Orange, repsberry ]
 #+END_SRC
 
 Even though this last example seems odd for a simple case like this,
