@@ -30,7 +30,7 @@ I'm going to use the code from Martin's article to describe what I believe is on
 case of misuse of pattern matching and why I believe that the implementation avoiding
 its usage is more composable and scalable. The only reason why I'm basing this
 on Martin's article is that this will offer the reader to see
-two opposite views on the same example implementation. That will also help rthe eader to see,
+two opposite views on the same example implementation. That will also help the reader to see,
 that in fact, there is a trade-off when making design decisions like this one.
 
 #+BEGIN_vocabulary
@@ -523,11 +523,11 @@ And extend the store with custom data in the main module:
 #+BEGIN_SRC elm
   module Main exposing (..)
 
-  import Store exposing (Flags, Store)
+  import Store exposing (Flags)
 
 
   type Msg
-      = StoreMsg Msg
+      = StoreMsg Store.Msg
 
 
   type alias ExtendedStore =
@@ -546,15 +546,15 @@ And extend the store with custom data in the main module:
           { x = (), y = () }
 
 
-  fetchBaz : FetchAction msg ExtendedStore
+  fetchBaz : FetchAction Msg ExtendedStore
   fetchBaz =
       Store.FetchAction <|
-          \toMsg Flags store -> ( store, Cmd.map toMsg Cmd.none )
+          \toMsg Flags store -> ( store, Cmd.none )
 #+END_SRC
 
 This would not be possible with defunctionalized version.
 
-* Looking at the Right Place
+* Usage Patterns with Higher Order Functions
 
 Martin ends his post with showing the screenshot --- a part of final diff.
 In this code section, he simplified code into an alias to data constructor.
