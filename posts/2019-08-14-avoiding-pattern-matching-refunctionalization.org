@@ -2,7 +2,7 @@
 title: Avoiding Pattern Matching
 subtitle: Regaining open composability with refunctionalization
 description: Utilizing higher order functions for creating extensible decoupled APIs
-tags: elm, fp
+tags: elm, functional-programming
 ---
 
 A few days ago, my colleague [[https://twitter.com/janiczek][Martin Janiczek]] published a post on his blog called
