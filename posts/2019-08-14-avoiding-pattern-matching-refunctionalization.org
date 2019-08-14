@@ -10,8 +10,8 @@ A few days ago, my colleague [[https://twitter.com/janiczek][Martin Janiczek]] p
 [[https://www.youtube.com/watch?v=vNwukfhsOME][The Best Refactoring You've Never Heard Of]].
 
 The talk itself describes a sort of isomorphism between continuations and data and
-a way to refactor between the two. This is probably not very life changing information
-for experienced functional programmer sas it might be for people with only imperative
+a way to refactor between the two. This is probably not as life changing information
+for experienced functional programmers as it might be for people with only imperative
 programming background but I recommend you to watch this talk especially because it
 establishes a good base and terminology for talking about this relationship.
 
@@ -34,8 +34,7 @@ two opposite views on the same example implementation. That will also help the r
 that in fact, there is a trade-off when making design decisions like this one.
 
 #+BEGIN_vocabulary
-I'm going to use some terms in this post. I'll try my best to at least use these terms consistently
-within the scope of this article.
+I'll try my best to use consist terminology within the scope of this article.
 Just keep in mind that this is just a blog post and not an academic article though so expect simplifications.
 
 *Data* are constructed from primitive types. Functions are not data.
@@ -306,7 +305,7 @@ Just forget about functions and data and focus on values. Everything is just a v
 Whenever I have to deal with too many things at once, I try to look for some pattern.
 If I see some repeating part like ~Foo -> Bar -> a -> List a~ I know that I can reduce it in head to some ~Placeholder a~.
 The only place where you really need to understand the detail is
-when you bridge the level of abstraction where you need to concern yourself with individual pieces of this value.
+when you bridge the level of abstraction to the level in which you need to concern yourself with individual pieces of this value.
 
 This works well with full-blown continuations or higher order functions in general.
 The key is to understand how two different things can be viewed as the same thing on some level
@@ -354,9 +353,6 @@ Defining it as a product of properties creates an *open set* of values.
 It's even possible to define something like this:
 
 #+BEGIN_SRC elm
-  module Main exposing (..)
-
-
   type Fruit a
       = Fruit a (a -> String)
 
@@ -404,9 +400,7 @@ It's even possible to define something like this:
 
   caller : List String
   caller =
-      [ getColor <| specialFruit Orange
-      , getColor repsberry
-      ]
+      List.map getColor [ specialFruit Orange, getColor repsberry ]
 #+END_SRC
 
 Even though this last example seems odd for a simple case like this,
@@ -441,9 +435,9 @@ we're going to need to extract it first.
           actions
 #+END_SRC
 
-~FetchAction~ type now has to be parametrized though the same way ~fetch~ function was in the previous version.
+~FetchAction~ type now has to be parametrized the same way the ~fetch~ function was in the previous version.
 
-And look at the usage now:
+Look at the usage now:
 
 #+BEGIN_SRC elm
   module Main exposing (..)
@@ -465,7 +459,7 @@ Is this more complicated in any way? I let you be the judge.
 
 * Extensibility
 
-Since the second example doesn't contain tight coupling to the same sum type, it can be quite easily extend by composition.
+Since the second example doesn't contain tight coupling to the same sum type, it can be quite easily extended by composition.
 For instance we can generalize the ~Store~ module to work with extensible record:
 
 #+BEGIN_SRC elm
@@ -571,7 +565,7 @@ Instead of emitting any type of intermediate command, I think the ~init~ functio
       ( (), fetchMany [ Store.fetchFoo, Store.fetchBar ] )
 #+END_SRC
 
-With this, there won't need any special ~Msg~ in parent module.
+With this, we won't need any special ~Msg~ in parent module.
 All we do is pass down the ~Store.fetchMany~ with applied arguments.
 Simple as that.
 
@@ -590,11 +584,11 @@ A good example of open API is [[https://package.elm-lang.org/packages/elm/html/l
 It would be possible to define type ~Node~ and functions operating with this closed sum type but it would be a poor design choice.
 
 By designing all the code around closed structures, we're in some sense
-making a full circle back to C interfaces with integer arguments designed to changing behavior of implementation.
+making a full circle back to C interfaces with integer arguments used to change behavior of procedure.
 We just have slightly more expressive tool to accomplish that.
 
 Some time ago, I've also created [[https://package.elm-lang.org/packages/turboMaCk/elm-continue/latest/][elm-continue]], a package with even more generalized abstractions
-for working with continuations than we used here.
+for working with continuations than what we used here.
 I just must warn you, that not everyone from elm community would likely approve of using it.
 
 I was honestly unsure if I should write this post.
