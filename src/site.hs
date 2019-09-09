@@ -136,7 +136,7 @@ main = do
             compile copyFileCompiler
 
         -- Styles (SASS)
-        match "sass/default.scss" $ do
+        match "sass/*.scss" $ do
             route $ setExtension "css" `composeRoutes` gsubRoute "sass/" (const "css/")
             compile (compressCssItem <$> sassCompiler)
 
