@@ -43,6 +43,7 @@ pre {
     &.shell,
     &.txt,
     &.typescript,
+    &.elm,
     &.rundoc-block {
         border: 1px dashed lighten($highlight_color, 20%);
         font-size: 14px;
@@ -75,6 +76,11 @@ pre {
             background: transparent;
         }
     }
+
+    .sourceLine {
+        color: inherit;
+        border-bottom: none;
+    }
 }
 
 code {
@@ -87,6 +93,7 @@ blockquote {
     margin-left: 4em;
     margin-top: 50px;
     margin-bottom: 50px;
+    font-style: italic;
 
     &::before {
         content: '"';
