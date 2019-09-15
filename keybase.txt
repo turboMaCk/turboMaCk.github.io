@@ -1,0 +1,53 @@
+https://keybase.io/turbo_mack
+--------------------------------------------------------------------
+
+I hereby claim:
+
+  * I am an admin of https://turbomack.github.io
+  * I am turbo_mack (https://keybase.io/turbo_mack) on keybase.
+  * I have a public key ASAt1ZsFYTsklF7t0-N7tnT6NTLQqv-A1Br2A1K12cp-jAo
+
+To do so, I am signing this object:
+
+{
+  "body": {
+    "key": {
+      "eldest_kid": "0101371d7dc55341f8c3c7922ffd16ed1b115d707d3e1c57d58560461fa9c534891c0a",
+      "host": "keybase.io",
+      "kid": "01202dd59b05613b24945eedd3e37bb674fa3532d0aaff80d41af60352b5d9ca7e8c0a",
+      "uid": "50be46412deb7f92bd06a6b287cb9619",
+      "username": "turbo_mack"
+    },
+    "merkle_root": {
+      "ctime": 1568539354,
+      "hash": "c93d949c735599b6909592bcf4379076a9c71fbf3abc3f190ea8247b2138cef032b19b0d2fa2d857a3839df8a8702671de705904f1f4efdfe841b5d1bfc9be00",
+      "hash_meta": "e98786ed0be1c3f26c25fc9f830d4619619bb8033778fe7c3e3207641daa684b",
+      "seqno": 7382433
+    },
+    "service": {
+      "entropy": "w8fr/8HltABHeQ/+R/tZktwO",
+      "hostname": "turbomack.github.io",
+      "protocol": "https:"
+    },
+    "type": "web_service_binding",
+    "version": 2
+  },
+  "client": {
+    "name": "keybase.io go client",
+    "version": "4.3.1"
+  },
+  "ctime": 1568539370,
+  "expire_in": 504576000,
+  "prev": "38d746be3804c204847aa2489e0e530b83f4a38ad7199f833d1f78b2787692e2",
+  "seqno": 32,
+  "tag": "signature"
+}
+
+which yields the signature:
+
+hKRib2R5hqhkZXRhY2hlZMOpaGFzaF90eXBlCqNrZXnEIwEgLdWbBWE7JJRe7dPje7Z0+jUy0Kr/gNQa9gNStdnKfowKp3BheWxvYWTESpcCIMQgONdGvjgEwgSEeqJIng5TC4P0o4rXGZ+DPR94snh2kuLEIDgFQdhgv8S8rJghbTRkv1odRecvaES6N34yE66JGQ7QAgHCo3NpZ8RAfIXLwfCQOn5irE0O+sDNZgjp6gzIJWhv5HCkfCBwCa6gfMnVFumteARhSJxLS4bkIoGXgMJ/9W7UpdLrXD/QCahzaWdfdHlwZSCkaGFzaIKkdHlwZQildmFsdWXEIC4xsefPSE+69YxytBTuBkKC4p25zcmIO8czFTRnPxldo3RhZ80CAqd2ZXJzaW9uAQ==
+
+And finally, I am proving ownership of this host by posting or
+appending to this document.
+
+View my publicly-auditable identity here: https://keybase.io/turbo_mack
