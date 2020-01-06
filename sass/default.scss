@@ -44,11 +44,10 @@ pre {
     &.typescript,
     &.elm,
     &.rundoc-block {
-        border: 1px dashed lighten($highlight_color, 20%);
         font-size: 14px;
         line-height: 1.3rem;
         padding: 10px 20px;
-        background: $light_color;
+        background: $light_grey_color;
         overflow: auto;
 
         code {
