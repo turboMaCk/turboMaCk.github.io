@@ -3,7 +3,7 @@
 
 # Hakyll
 _cache
-dist
+dist*
 site
 site.hi
 site.o
