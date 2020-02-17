@@ -139,8 +139,8 @@ I wanted to blog about something but ended up fixing build and then writing this
 A big part of using software is about putting through with
 things like this. There is always some trade-off with tools and approaches we use.
 For me personally it's important above all to be able to go and fix issues myself without going completely crazy
-in the process. Both Haskell and Nix are good tool for this. On the other hand neither of them
-is the most effective way to avoiding these problems in first place.
+in the process. Both Haskell and Nix are good tools for this. On the other hand neither of them
+is the most effective way of avoiding problems like in first place.
 
 I'm not going to rant about the state of the software.
 Neither I'm going to praise tools I use. I'm writing this post with two goals:
