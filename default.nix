@@ -1,9 +1,9 @@
 let
   config = {
-    packageOverrides = pkgs: rec {
+    packageOverrides = pkgs: {
       haskellPackages = pkgs.haskellPackages.override {
-        overrides = haskellPackagesNew: haskellPackagesOld: rec {
-          hakyll = haskellPackagesOld.hakyll.overrideAttrs( old: {
+        overrides = haskellPackagesNew: haskellPackagesOld: {
+          hakyll = haskellPackagesOld.hakyll.overrideAttrs(old: {
             configureFlags = "-f watchServer -f previewServer";
             patches = [./hakyll.patch];
           });

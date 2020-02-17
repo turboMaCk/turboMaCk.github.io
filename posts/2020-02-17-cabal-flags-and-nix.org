@@ -1,0 +1,154 @@
+---
+title: Cabal Flags With and Without Nix
+subtitle: Hakyll build environment with watcher and preview server using nix
+description: Yak shaving continues. Quick how to on cabal flags with nix.
+tags: haskell, nix
+---
+
+[[https://en.wiktionary.org/wiki/yak_shaving][Yak shaving]] for every day. I wanted to write post about something completely
+different but I needed to shave a beast and figured I can as well share "a quick how to"
+in hope I might safe someone else's time.
+
+I've been using [[https://nixos.org][NixOS]] exclusively on basically all of my machines.
+I also like to abuse nix for all sort of stuff - for creating project environments using
+[[https://nixos.org/nix/manual/#sec-nix-shell][nix-shell]], deployment etc. Anyway as it is pretty common at least in my case, the software
+gods were pretty angry with me again. Even though I have this site "/nixified/" for over a year
+*it turned out Hakyll in nixpkgs is not built with ~previewServer~ and ~watchServer~ which I would
+pretty much like to use.*
+
+* Cabal Flags
+
+Lets start by familiarizing ourselves with [[https://www.haskell.org/cabal/release/cabal-1.10.1.0/doc/users-guide/#example-a-package-containing-a-library-and-executable-programs-1][Cabal Flags]] first.
+Cabal allows user to define custom build configuration flags within cabal file.
+Declaration of custom flags is usually in top section of Cabal file. *Flag has to be ~Bool~ value*
+and can be both ~True~ or ~False~ by default.
+
+Looking into [[https://github.com/jaspervdj/hakyll/blob/a312fd4972f9add0736a9f8335bcd51e0e163b06/hakyll.cabal#L88-L108][hakyll.cabal]] we can see two flags ~watchServer~ and ~previewServer~.
+Interestingly enough, both are set to ~True~ by default. This is can configure
+to overwrite default flags:
+
+#+BEGIN_SRC bash
+$ cabal configure -f watchServer -f previewServer
+#+END_SRC
+
+#+BEGIN_note
+Frankly it was more difficult for me to found this information than I think it should have been.
+It's hard to point a finger to why so. Maybe it's hard to navigate cabal documentation,
+maybe the error message Hakyll logs when it's missing a flag is not helpful enough or maybe it
+was purely my own stupidity. Anyway Hackage lists available flags on [[https://hackage.haskell.org/package/hakyll-4.13.0.1][package description page]] including
+a link to [[https://www.haskell.org/cabal/users-guide/installing-packages.html#controlling-flag-assignments][relevant part of documentation of cabal]] so it's not like folks didn't try to be helpful.
+#+END_note
+
+* Haskell Infrastructure for Nix
+
+Like [[https://docs.haskellstack.org/en/stable/README/][Stack]], [[https://nixos.org/nixpkgs/][nixpkgs]] provide curated Haskell package sets but with both flexibility
+and user experience (meaning complexity) of Nix. [[https://hackage.haskell.org/package/cabal2nix][Cabal2Nix]] is a standard tool
+for generating Nix expressions for Cabal projects.
+
+#+BEGIN_SRC bash
+$ cabal2nix . > site.nix
+#+END_SRC
+
+#+BEGIN_note
+If you don't want to pre-generate nix expressions you can as well use
+~haskellPackages.cabal2nix "site" ./.~ as a part of build rather than generating it upfront.
+#+END_note
+
+There are two gotchas though. First Hakyll within nix packages is build with ~watchServer~ and ~previewServer~
+disabled so these features are not available, second the standard ~jailbreak~[fn:1] seems not to be compatible with cabal
+flags.
+
+** Overriding Hakyll
+
+To fix these two problems we're going to override the definition of Hakyll.
+For general structure of ~default.nix~ file I'm roughly following Gabriel's [[https://github.com/Gabriel439/haskell-nix][haskell-nix]]
+way which looks like this:
+
+#+BEGIN_SRC nix
+  let
+    config = {
+      packageOverrides = pkgs: {
+        haskellPackages = pkgs.haskellPackages.override {
+          overrides = haskellPackagesNew: haskellPackagesOld: {
+            site = haskellPackagesNew.callPackage ./site.nix {};
+          };
+        };
+      };
+    };
+    pkgs = import <nixpkgs> { inherit config; };
+  in pkgs.haskellPackages.site;
+#+END_SRC
+
+This will extend default package set with my custom ~site~ package.
+
+Next thing we need to do is to add overrides for Hakyll. We're going to use
+version already available to us in haskellPackages and just apply desired changes.
+For start we need to configure projects with ~watchServer~ and ~previewServer~ flags:
+
+#+BEGIN_SRC nix
+  #...
+        haskellPackages = pkgs.haskellPackages.override {
+          overrides = haskellPackagesNew: haskellPackagesOld: {
+            hakyll = haskellPackagesOld.hakyll.overrideAttrs(old: {
+              configureFlags = "-f watchServer -f previewServer"; # pass configure flags
+              jailbreak = true; # jailbreak dependecies
+            });
+            site = haskellPackagesNew.callPackage ./site.nix {};
+          };
+        };
+  #...
+#+END_SRC
+
+This is as far as I know not documented but it's easy enough to reverse engineer from the [[https://github.com/NixOS/nixpkgs/blob/3285f0f2ff36aea7d5e87520a3e9ef66c44f87b8/pkgs/development/haskell-modules/generic-builder.nix#L21][generir-builder.nix]].
+
+At this stage build fails for me though because of unavailable version of [[https://hackage.haskell.org/package/warp][warp]].
+I assume this is because ~jailbreak~ doesn't work correctly with flag directive.
+
+To solve this problem I'm going to define custom patch for Hakyll.
+I usually use git to produce patches.
+
+1. git clone the repository
+2. do desired changes to source locally
+3. run ~git diff > file.patch~ to produce patch file
+
+*[[https://github.com/turboMaCk/turboMaCk.github.io/blob/33a9435e81e241ec2ea6251101e35b9a522e2793/hakyll.patch][Patch file]] I'm using.*
+
+The simplest way to apply custom patches in nix expression is to use ~patches~ attribute as follows:
+
+#+BEGIN_SRC nix
+  #...
+        haskellPackages = pkgs.haskellPackages.override {
+          overrides = haskellPackagesNew: haskellPackagesOld: {
+            hakyll = haskellPackagesOld.hakyll.overrideAttrs(old: {
+              configureFlags = "-f watchServer -f previewServer";
+              patches = [./hakyll.patch]; # applying our custom patch
+            });
+            site = haskellPackagesNew.callPackage ./site.nix {};
+          };
+        };
+  #...
+#+END_SRC
+
+Now we have build for our ~site~ binary using the customized version of Hakyll
+with support for ~watch~ command.
+
+* Conclusion
+
+More than anything this demonstrates how frustrating it sometimes can be to use software.
+I wanted to blog about something but ended up fixing build and then writing this tutorial instead.
+A big part of using software is about putting through with
+things like this. There is always some trade-off with tools and approaches we use.
+For me personally it's important above all to be able to go and fix issues myself without going completely crazy
+in the process. Both Haskell and Nix are good tool for this. On the other hand neither of them
+is the most effective way to avoiding these problems in first place.
+
+I'm not going to rant about the state of the software.
+Neither I'm going to praise tools I use. I'm writing this post with two goals:
+
+1. As a mostly copy paste tutorial for folks who might run into similar issues.
+2. As an exercise for reader to see both power and cost of getting things done with tools like these.
+
+**Whole code can be found on [[https://github.com/turboMaCk/turboMaCk.github.io/tree/33a9435e81e241ec2ea6251101e35b9a522e2793][GitHub]]**
+
+[fn:1] ~jailbreak~ attribute or ~doJailbreak~ function are used to remove version constrains from cabal file
+so package can be build with other version of dependencies present in used haskellPackages set.
