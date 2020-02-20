@@ -195,10 +195,11 @@ personDecoder =
         <*> field "age" auto
 #+END_SRC
 
-* Resources
+* Additional Resources
 
 Full implementation of this Idea can be found in [[https://github.com/turboMaCk/aeson-combinators][this GitHub repository]].
 Feel free to provide any feedback about this idea including criticism.
+Be aware that this is not published and is still missing some important bits.
 
 [[https://hackage.haskell.org/package/waargonaut][Waargonaut]] package is Aeson alternative which has API similar to what I've described here
 if you want to avoid whole Aeson.
