@@ -6,44 +6,46 @@ tags: haskell, web
 ---
 
 I've learned to like the way JSON decoding works in Elm[fan:1].
-I see some advantages in using combinators to decode values from JSONs.
+I see some advantages of using combinators to decode values from JSONs.
 In some situations, I would very much prefer
 this style of decoding over type class instances used by [[https://hackage.haskell.org/package/aeson][Aeson]].
+
 * Conceptual Model of Type Classes
 
-Type classes allows us to define that a type is member of larger groups of types (classes).
+Type classes allow us to define that type is a member of larger groups of types (classes).
 Or the other way around, to define classes of data types.
 The important aspect, though, is that *given specific type there is exactly
 one way in which it can be made an instance of the class*.
 Even type classes like ~Applicative~ "/suffer/" from this limitation.
-List ~[a]~ data type for instance has two completely valid, but different, implementations
+List ~[a]~ data type, for instance, has two completely valid, but different, implementations
 of ~Applicative~ instance. Let me be clear, I'm not saying this is a huge problem in cases like ~[a]~.
-But this aspect will come back to hunt us even more when we start using type classes for JSON decoding where it is even less clear
+But this aspect will come back to haunt us, even more,
+when we start using type classes for JSON decoding where it is even less clear
 to know what we mean by "instance of ~FromJSON~".
 [[http://comonad.com/reader/][Edward Kmett]] had [[https://www.youtube.com/watch?v=hIZxTQP1ifo][a briliant talk about type classes in Boston Haskell Meetup]] so don't forget to check it out if you haven't.
 
 I hope I've managed to establish that with classes (like Aeson's ~FromJSON~) we're essentially closing
 the JSON decoding implementation over types.
 I think that this, in many cases, is not a good model for translating data between different representations.
-A much better way would be to allow for arbitrary number of functions from JSON values to the same type.
-It's fair to assume that same data type can be decoded from different JSONs structures
+A much better way would be to allow for an arbitrary number of functions from JSON values to the same type.
+It's fair to assume that the same data type can be decoded from different JSONs structures
 (problematic with type classes) as it is to assume that the same JSON structure
 can be decoded to multiple data types (no problem with classes).
 
 Because of this, it's a common practice to define type wrappers around existing data types
 just to make it possible to define "another" instance of ~FromJSON~ around the type.
 While this solution works, I personally don't find it satisfying.
-To me, all these types are just an unnecessary noise. I don't like to have types
-which are, in my opinion at least, not important in the conceptual model of domain at all.
+To me, all these types are just unnecessary noise. I don't like to have types
+which are, in my opinion at least, not important in the conceptual model of my domain at all.
 
 * Solution
 
 What I would like to have is not a complete replacement for ~FromJSON~ class.
 There are in fact cases where it makes sense to have a single definition
-of mapping between JSON and data type. So I still want to be able to define ~FromJSON~
+of a mapping between JSON and data type. So I still want to be able to define ~FromJSON~
 instance but I also want an option to define "decoders" not as an instance of a class of some type but as a value.
 
-What I mean I that is to be able to do something like this (~ACD~ being our to be library):
+What I mean I that is to be able to do something like this (~ACD~ being our library):
 
 #+BEGIN_SRC haskell
 data Person = Person {
@@ -66,7 +68,7 @@ any JSON structure as following:
 Just (Person {name = "Joe", age = 12})
 #+END_SRC
 
-Or I want to be able to define anonymous product decoder (to tuples):
+Or I want to be able to define anonymous product (tuple) decoder:
 
 #+BEGIN_SRC haskell
 type Token = Text -- using alias for simplicity
@@ -89,7 +91,7 @@ Just ("foo",Person {name = "Joe", age = 12})
 
 The idea is to be able to define ~Decoder a~ type which is essentially just ~parseJSON~
 method from ~FromJSON~ class. Since we want to make this work with Aeson's type classes
-without introducing much overhead, we simply just wrap it to ~newtype~:
+without introducing more than necessary overhead, we simply just wrap its member function ~parseJSON~ to a ~newtype~:
 
 #+BEGIN_SRC haskell
 newtype Decoder a =
@@ -135,7 +137,8 @@ instance Monad Decoder where
       _ -> unexpected val
 #+END_SRC
 
-And finally some combinators specific for JSON.
+And finally some combinators specific for JSON. We need a function then can extract value from
+JSON filed. And then we can define another function for "drilling" a few fields deep into JSON Object.
 
 #+BEGIN_SRC haskell
 field :: Text -> Decoder a -> Decoder a
@@ -149,13 +152,9 @@ at path d =
   foldr field d path
 #+END_SRC
 
-For working with JSON objects we also need a function then can extract value from
-JSON filed. Then we can even define another function which for drilling a few levels
-deep into JSON.
-
 Once again this is using functions already provided by Aeson.
 
-Last step is define new [[https://hackage.haskell.org/package/aeson-1.4.6.0/docs/Data-Aeson.html#v:decode][decode]] which will work with ~Decoder~.
+Last step is to define new [[https://hackage.haskell.org/package/aeson-1.4.6.0/docs/Data-Aeson.html#v:decode][decode]] which will work with ~Decoder~.
 
 #+BEGIN_SRC haskell
 decode :: Decoder a -> LB.ByteString -> Maybe a
@@ -196,7 +195,7 @@ if you want to avoid whole Aeson.
 
 While writing this post I've discovered that [[https://chris-martin.org/][Chris Martin]] had a similar idea
 implemented in [[https://hackage.haskell.org/package/aeson-decode-0.1.0.0/docs/AesonDecode.html][aeson-decode]] package but the actual implementation uses ~Value -> Maybe a~
-function similarly to [[https://twitter.com/turbo_MaCk/status/1227247541336641536][my original prototype]].
+function similar to [[https://twitter.com/turbo_MaCk/status/1227247541336641536][my original prototype]].
 
 ---
 
