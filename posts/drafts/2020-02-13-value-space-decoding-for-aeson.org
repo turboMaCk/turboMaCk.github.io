@@ -5,11 +5,10 @@ description: TODO
 tags: haskell, web
 ---
 
-I've learned to like the way JSON decoding works in Elm.
-I see some advantages in parsing JSONs with combinators.
-In some situations I would very much prefer
-combinators over type class instances used by [[https://hackage.haskell.org/package/aeson][Aeson]].
-
+I've learned to like the way JSON decoding works in Elm[fn:1].
+I see some advantages in using combinators to decode values from JSONs.
+In some situations, I would very much prefer
+this style of decoding over type class instances used by [[https://hackage.haskell.org/package/aeson][Aeson]].
 * Conceptual Model of Type Classes
 
 Type classes are mechanism to define that type is member of larger groups of types (classes).
@@ -46,7 +45,7 @@ There are in fact cases where there it make sense to have a single definition
 of mapping between JSON and data types. I still want to be able to define ~FromJSON~
 instance but I also want an option to define "decoders" not as an instance but as a value.
 
-What I mean I that is to be able to do something like this
+What I mean I that is to be able to do something like this (~ACD~ being our to be library):
 
 #+BEGIN_SRC haskell
 data Person = Person {
@@ -56,23 +55,23 @@ data Person = Person {
 
 instance FromJSON Person
 
-decodeEmbededPerson :: [Text] -> ByteString -> Maybe Person
-decodeEmbededPerson path json =
+decodeEmbeded :: FromJSON a => [Text] -> ByteString -> Maybe a
+decodeEmbeded path json =
     ACD.decode (ACD.at path ACD.auto) json
 #+END_SRC
 
-which can be used to extract decode ~Person~ embedded in
-any JSON structure like:
+Which can be used to extract ~Person~ embedded in
+any JSON structure as following:
 
 #+BEGIN_SRC shell
->>> decodeEmbededPerson ["data", "person"] "{\"data\":{\"person\":{\"name\":\"Joe\",\"age\":12}}}"
+>>> decodeEmbeded ["data", "person"] "{\"data\":{\"person\":{\"name\":\"Joe\",\"age\":12}}}"
 Just (Person {name = "Joe", age = 12})
 #+END_SRC
 
-Or to be able to define anonymous product decoder (to tuples):
+Or I want to be able to define anonymous product decoder (to tuples):
 
 #+BEGIN_SRC haskell
-type Token = Text
+type Token = Text -- using alias for simplicity
 
 decodePersonWithToken :: ByteString -> Maybe (Token, Person)
 decodePersonWithToken json = ACD.decode decoder json
@@ -90,7 +89,7 @@ Just ("foo",Person {name = "Joe", age = 12})
 
 * Implementation
 
-So the idea is to be able to define ~Decoder a~ type which is essentially just ~parseJSON~
+The idea is to be able to define ~Decoder a~ type which is essentially just ~parseJSON~
 method from ~FromJSON~ class. Since we want to make this work with Aeson's type classes
 without introducing much overhead, we simply just wrap it to ~newtype~:
 
@@ -201,3 +200,8 @@ if you want to avoid whole Aeson.
 While writing this post I've discovered that [[https://chris-martin.org/][Chris Martin]] had a similar idea
 implemented in [[https://hackage.haskell.org/package/aeson-decode-0.1.0.0/docs/AesonDecode.html][aeson-decode]] package but the actual implementation uses ~Value -> Maybe a~
 function similarly to [[https://twitter.com/turbo_MaCk/status/1227247541336641536][my original prototype]].
+
+---
+
+[fn:1] In fact I mean combination of [[https://package.elm-lang.org/packages/elm/json/latest/Json-Decode][elm/json]] and [[https://package.elm-lang.org/packages/elm-community/json-extra/latest/][elm-comunity/json-extra]] for Applicative "andMap"
+or [[https://package.elm-lang.org/packages/NoRedInk/elm-json-decode-pipeline/latest/][NoRedInk/elm-json-decode-pipeline.]]
