@@ -6,7 +6,7 @@ reddit: r/haskell/comments/f7crdb/combinators_for_json_decoding
 tags: haskell, web
 ---
 
-I've learned to like the way JSON decoding works in Elm[fan:1].
+I've learned to like the way JSON decoding works in Elm[fn:1].
 I see some advantages of using combinators to decode values from JSONs.
 In some situations, I would very much prefer
 this style of decoding over type class instances used by [[https://hackage.haskell.org/package/aeson][Aeson]].
