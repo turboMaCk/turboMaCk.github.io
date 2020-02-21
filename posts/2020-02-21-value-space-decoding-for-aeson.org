@@ -1,7 +1,7 @@
 ---
 title: Value Space Decoding for Aeson
-subtitle: TODO
-description: TODO
+subtitle: Implementation of combinators for JSON decoding in Haskell
+description: Extending Aeson api with value level combinators and Decoder type.
 tags: haskell, web
 ---
 
@@ -197,7 +197,6 @@ While writing this post I've discovered that [[https://chris-martin.org/][Chris 
 implemented in [[https://hackage.haskell.org/package/aeson-decode-0.1.0.0/docs/AesonDecode.html][aeson-decode]] package but the actual implementation uses ~Value -> Maybe a~
 function similar to [[https://twitter.com/turbo_MaCk/status/1227247541336641536][my original prototype]].
 
----
 
 [fn:1] In fact I mean combination of [[https://package.elm-lang.org/packages/elm/json/latest/Json-Decode][elm/json]] and [[https://package.elm-lang.org/packages/elm-community/json-extra/latest/Json-Decode-Extra][elm-comunity/json-extra]] for Applicative "andMap"
 or [[https://package.elm-lang.org/packages/NoRedInk/elm-json-decode-pipeline/latest/][NoRedInk/elm-json-decode-pipeline.]]
