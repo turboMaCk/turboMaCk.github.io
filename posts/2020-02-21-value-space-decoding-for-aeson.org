@@ -11,6 +11,15 @@ I see some advantages of using combinators to decode values from JSONs.
 In some situations, I would very much prefer
 this style of decoding over type class instances used by [[https://hackage.haskell.org/package/aeson][Aeson]].
 
+#+BEGIN_updates
+Since originally writing this post I've released full implementation
+of this idea as a package to both Hackage and Stackage:
+
+- [[https://hackage.haskell.org/package/aeson-combinators-0.0.1.0][aeson-combinators on Hackage]]
+- [[https://github.com/commercialhaskell/stackage/pull/5216][PR to Stackage]] - should become available soon
+- [[https://github.com/turboMaCk/aeson-combinators][GitHub repository]]
+#+END_updates
+
 * Conceptual Model of Type Classes
 
 Type classes allow us to define that type is a member of larger groups of types (classes).
@@ -84,7 +93,7 @@ decodePersonWithToken json = ACD.decode decoder json
 which works as following:
 
 #+BEGIN_SRC shell
-decodePersonWithToken "{\"person\":{\"name\":\"Joe\",\"age\":12},\"token\":\"foo\"}"
+>>> decodePersonWithToken "{\"person\":{\"name\":\"Joe\",\"age\":12},\"token\":\"foo\"}"
 Just ("foo",Person {name = "Joe", age = 12})
 #+END_SRC
 
