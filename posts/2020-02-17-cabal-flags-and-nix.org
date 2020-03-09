@@ -16,6 +16,14 @@ gods were pretty angry with me again. Even though I have this site "/nixified/" 
 *it turned out Hakyll in nixpkgs is not built with ~previewServer~ and ~watchServer~ which I would
 pretty much like to use.*
 
+#+BEGIN_updates
+[[https://github.com/NixOS/cabal2nix/issues/442][Discussion under issue 442 in cabal2nix]] shed a bit more light onto the issues described
+within this post.
+The issue with
+1. There are good reasons why ~doJailbreak~ ignores conditional dependencies. See [[https://github.com/peti/jailbreak-cabal/issues/7#issuecomment-87445882][this comment for more informations]].
+2. The reason why Hakyll in nixpkgs is not built with default ~previewServer~ and ~watchServer~ is due to Cabal Install. Nixpkgs set doesn't contain compatible version of ~warp~ package so ~Hakyll~ can't be built with those flags. In situations like this Cabal simply silently ignores the flag. This behaviour seems at best odd to me. There is currently some [[https://github.com/NixOS/cabal2nix/issues/442#issuecomment-595954664][dicussion about making flags explicit]]. Change like this might make maintenance of nixpkgs a bit more difficult so we will see how this goes.
+#+END_updates
+
 * Cabal Flags
 
 Lets start by familiarizing ourselves with [[https://www.haskell.org/cabal/release/cabal-1.10.1.0/doc/users-guide/#example-a-package-containing-a-library-and-executable-programs-1][Cabal Flags]] first.
