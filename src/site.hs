@@ -50,7 +50,6 @@ My blog builder on top of Hakyll & Haskell
 --------------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
 import           Control.Monad      (when)
-import           Data.Monoid        ((<>))
 import           System.Environment (getArgs)
 
 import           Hakyll
