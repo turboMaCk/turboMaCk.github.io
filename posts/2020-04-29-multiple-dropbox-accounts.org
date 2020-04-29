@@ -124,7 +124,7 @@ and I'm putting things like this in there.
 let
   custom-home = "~/Holmusk-Home";
 
-  dropbox = with pkgs; writeScriptBin "dropbox-holmusk" ''
+  holmusk-dropbox = with pkgs; writeScriptBin "dropbox-holmusk" ''
     #!/usr/bin/env bash
     set -e
 
@@ -155,7 +155,7 @@ let
   '';
 in {
   environment.systemPackages = [
-    dropbox
+    holmusk-dropbox
     sync-rwe-assets
   ];
 }
