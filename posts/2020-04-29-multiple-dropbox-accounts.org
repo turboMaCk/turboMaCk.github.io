@@ -1,7 +1,7 @@
 ---
-title: How Dealing with Multiple Dropbox Accounts
+title: Dealing with Multiple Dropbox Accounts
 subtitle: Tiny hack to boost your productivity
-description: Simple shell script to run multiple Dropbox instances with multiple accounts on single machine.
+description: Make it possible to use two Dropbox accounts at the same time with just a tiny bit of shell-scripting.
 tags: tiny-hacks, nix, shell, linux, productivity
 ---
 
