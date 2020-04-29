@@ -6,16 +6,16 @@ tags: tiny-hacks, nix, shell, linux, productivity
 ---
 
 It's pretty common for a company to require its long-term consultants and employees to use
-all sorts of tools with accounts.
-The way these products often operate though is that they expect every user to
+all sorts of tools and accounts.
+On a contrary, the way these products often operate though is that they expect user to
 have a single account. For organizations,
-there is usually an ability to create teams as a group of multiple accounts.
+there is usually an ability to create teams - a group of multiple individual accounts.
 The problem is that this is not exactly how companies like to do things.
 
-Companies often like to provide @company email a likely address and create all other
-accounts for this email address. This means that if you have a personal account
+Companies often like to provide @company email address and create all other
+accounts under it. This means that if you have a personal account
 for any of the service company requires you to use, you're likely in a situation which most of these
-apps are not prepared for.
+apps are not prepared for. Two accounts on a single machine.
 
 Lets, for instance, have a look at [[https://www.dropbox.com][Dropbox]].
 
