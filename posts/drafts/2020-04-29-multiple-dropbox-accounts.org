@@ -1,37 +1,36 @@
 ---
-title: How I run Multiple Dropbox Accounts
-subtitle: Tiny hack for your productivity
-description:
+title: How Dealing with Multiple Dropbox Accounts
+subtitle: Tiny hack to boost your productivity
+description: Simple shell script to run multiple Dropbox instances with multiple accounts on single machine.
 tags: tiny-hacks, nix, shell, linux, productivity
 ---
 
-It's pretty common that companies require its long-term consultants and employees
-all sorts of tools that require having some sort of account for a service.
+It's pretty common for a company to require its long-term consultants and employees to use
+all sorts of tools with accounts.
 The way these products often operate though is that they expect every user to
-have a single account and then give ability to create teams as a group of multiple
-accounts with some permissions to access this shared information.
-The problem though is that this is not exactly how companies like to do things.
+have a single account. For organizations,
+there is usually an ability to create teams as a group of multiple accounts.
+The problem is that this is not exactly how companies like to do things.
 
-Companies usually like to provide company email address and create all the other
-accounts based on this new email. This means that if you have personal account
-to for any of this service and its registered on your private email
-and company wants you to have another account you're in situation which most of
-these apps are not prepared for.
+Companies often like to provide @company email a likely address and create all other
+accounts for this email address. This means that if you have a personal account
+for any of the service company requires you to use, you're likely in a situation which most of these
+apps are not prepared for.
 
-Lets for instance have a look at [[https://www.dropbox.com][Dropbox]].
+Lets, for instance, have a look at [[https://www.dropbox.com][Dropbox]].
 
 [[file:/media/dropbox-account.png]]
 
-There is no option to have multiple accounts at the same time.
-There are [[https://help.dropbox.com/teams-admins/team-member/team-folders][options for teams]] but I can use them as my use-case
+There is no option to add an account without logging-out the existing one.
+There are some [[https://help.dropbox.com/teams-admins/team-member/team-folders][options for teams]] but you can't use them if your use-case
 involves multiple accounts.
 
-However it must be still possible to have multiple Dropbox accounts
-for multiple users on a single system, right?
+However, it must be still possible to have multiple Dropbox accounts
+for multiple users on a single system, right? How does that work?
 
 * Analyzing Dropbox
 
-Dropbox seems to be creating ~.dropbox~ directory in ~$HOME~ so lets have a look what is going on there.
+Dropbox seems to be creating ~.dropbox~ directory in to ~$HOME~ so lets have a look what is going on there.
 
 #+BEGIN_SRC shell
 $ tree ~/.dropbox
@@ -75,23 +74,23 @@ $ tree ~/.dropbox
 11 directories, 24 files
 #+END_SRC
 
-We don't even need to analyze this too deeply as it seems on a first look,
-that all the information associated with user account and current state of
-the Dropbox folder seems to be there on a first look.
+We don't even need to analyze this too deeply as on a first look it already seems
+that all the information associated with the account and its state is within this directory.
 
-First thing that comes to mind is to create new fake home, set ~HOME~ environment variable
-to point to this folder and then run Dropbox within this environment so lets try:
+
+The first thing that comes to mind is to create a new fake HOME directory, set the ~HOME~ environment variable
+to point to this folder, and then run Dropbox within this environment.
 
 #+BEGIN_SRC shell
 $ mkdir -p ~/Holmusk-Home
 $ HOME=$HOME/Holmusk-Home dropbox
 #+END_SRC
 
-And sure enough Dropbox seems to start bootsraping the new ~.dropbox~ folder
-and after successful login to the company account it also starts pulling the data it should.
+And sure enough, Dropbox seems to start the bootstrapping of the new ~.dropbox~ folder
+and, after successful login to the company account, it also starts pulling the data it should.
 
-This means we can simply create a shell script that to wrap ~dropbox~.
-Maybe it's worth noting that this solution should work across **Linux & MacOS**.
+This means we can simply create a shell script that wraps the ~dropbox~ binary in this way.
+It may be worth mentioning that this solution should work across **Linux & MacOS**
 
 #+BEGIN_SRC bash
 #!/usr/bin/env bash
@@ -103,17 +102,22 @@ mkdir -p $CUSTOM_HOME
 HOME=$CUSTOM_HOME dropbox
 #+END_SRC
 
-Now all it's needed to is to ~chmod +x~ and move it to ~$PATH~.
+#+BEGIN_note
+As far as I know, Dropbox doesn't support Unix like systems other than Linux and MacOS,
+but if it does, it will surely work for these as well.
+#+END_note
+
+Now all that is needed is to ~chmod +x~ the script and move it to ~$PATH~.
 On MacOS it might also be practical to use [[https://support.apple.com/guide/automator/welcome/mac][Automator]] to wrap the script
-as a application.
+as an application.
 
 [[file:/media/dropbox-tray.png]]
 
 * Nix
 
-Since I'm using [[https://nixos.org/nixos/][NixOS]] I like to do things like this in a nix ways.
-So in fact in my case I have ~profile/holmusk.nix~ file in my Dotfiles
-where I put these tiny things in:
+Since I'm using [[https://nixos.org/nixos/][NixOS]] I like to do things like this in a nix way.
+So in fact in my case, I have ~profile/holmusk.nix~ file in my [[https://github.com/turboMaCk/Dotfiles/][Dotfiles]]
+and I'm putting things like this in there.
 
 #+BEGIN_SRC nix
 { config, pkgs, ... }:
@@ -157,17 +161,18 @@ in {
 }
 #+END_SRC
 
-As you can see I also have another small script that automates sync
-of assets between project and Dropbox folder.
-My workflow is to export svg files for UI from [[https://www.figma.com/files/recent][Figma]], optimize them and put them to the project.
-This script is then used for sharing these extracted files back to Design team in case they need them.
+As you can see, I also have another small script that automates the synchronization
+of assets between the project and a shared Dropbox folder.
+My workflow is to export SVG files for UI from [[https://www.figma.com/files/recent][Figma]], optimize them, and put them to the project assets.
+I use this script for sharing processed files back to the design team in case they need them.
+It roughly works like this.
 
-- Check presence of ~package.json~ in the directory.
-- Check ~name~ value in ~package.json~ - this script is related to specific project.
-- Copy files to ~Dropbox~ folder.
+1. Check the presence of ~package.json~ in the directory.
+1. Check ~name~ value in ~package.json~ - this script is related to the specific project.
+1. Copy files to the ~Dropbox~ folder.
 
 * Wrap Up
 
 Shell scripts are terrible because the shell languages mostly are.
-Still it's the simplest way to automate smaller tasks in your workflow.
-Also Nix is awesome.
+Still, it's the simplest way to automate smaller tasks in your workflow.
+Also, Nix is awesome.
