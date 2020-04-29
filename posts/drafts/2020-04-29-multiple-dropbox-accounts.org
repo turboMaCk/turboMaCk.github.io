@@ -1,0 +1,173 @@
+---
+title: How I run Multiple Dropbox Accounts
+subtitle: Tiny hack for your productivity
+description:
+tags: tiny-hacks, nix, shell, linux, productivity
+---
+
+It's pretty common that companies require its long-term consultants and employees
+all sorts of tools that require having some sort of account for a service.
+The way these products often operate though is that they expect every user to
+have a single account and then give ability to create teams as a group of multiple
+accounts with some permissions to access this shared information.
+The problem though is that this is not exactly how companies like to do things.
+
+Companies usually like to provide company email address and create all the other
+accounts based on this new email. This means that if you have personal account
+to for any of this service and its registered on your private email
+and company wants you to have another account you're in situation which most of
+these apps are not prepared for.
+
+Lets for instance have a look at [[https://www.dropbox.com][Dropbox]].
+
+[[file:/media/dropbox-account.png]]
+
+There is no option to have multiple accounts at the same time.
+There are [[https://help.dropbox.com/teams-admins/team-member/team-folders][options for teams]] but I can use them as my use-case
+involves multiple accounts.
+
+However it must be still possible to have multiple Dropbox accounts
+for multiple users on a single system, right?
+
+* Analyzing Dropbox
+
+Dropbox seems to be creating ~.dropbox~ directory in ~$HOME~ so lets have a look what is going on there.
+
+#+BEGIN_SRC shell
+$ tree ~/.dropbox
+/home/marek/.dropbox
+├── command_socket
+├── dropbox.pid
+├── events
+│   ├── store
+│   └── store1
+├── host.db
+├── iface_socket
+├── info.json
+├── instance1
+│   ├── aggregation.dbx
+│   ├── config.db
+│   ├── config.dbx
+│   ├── hostkeys
+│   ├── sync
+│   │   ├── nucleus.sqlite3
+│   │   ├── nucleus.sqlite3-shm
+│   │   ├── nucleus.sqlite3-wal
+│   │   └── temp
+│   │       └── 04625d37a5e6b439.sqlite3
+│   └── unlink.db
+├── instance_db
+│   ├── hostkeys
+│   └── instance.dbx
+├── logs
+│   ├── 0
+│   ├── 1
+│   │   ├── 1-6999-5ea575c4.tmp
+│   │   ├── 1-6ac8-5ea81628.tmp
+│   │   └── 1-9231-5ea575c5.tmp
+│   └── 1ro
+│       └── 1-249f-5db03970.tmp
+├── machine_storage
+├── metrics
+│   └── store.bin
+└── unlink.db
+
+11 directories, 24 files
+#+END_SRC
+
+We don't even need to analyze this too deeply as it seems on a first look,
+that all the information associated with user account and current state of
+the Dropbox folder seems to be there on a first look.
+
+First thing that comes to mind is to create new fake home, set ~HOME~ environment variable
+to point to this folder and then run Dropbox within this environment so lets try:
+
+#+BEGIN_SRC shell
+$ mkdir -p ~/Holmusk-Home
+$ HOME=$HOME/Holmusk-Home dropbox
+#+END_SRC
+
+And sure enough Dropbox seems to start bootsraping the new ~.dropbox~ folder
+and after successful login to the company account it also starts pulling the data it should.
+
+This means we can simply create a shell script that to wrap ~dropbox~.
+Maybe it's worth noting that this solution should work across **Linux & MacOS**.
+
+#+BEGIN_SRC bash
+#!/usr/bin/env bash
+set -e
+
+CUSTOM_HOME=$HOME/Holmusk-Home
+
+mkdir -p $CUSTOM_HOME
+HOME=$CUSTOM_HOME dropbox
+#+END_SRC
+
+Now all it's needed to is to ~chmod +x~ and move it to ~$PATH~.
+On MacOS it might also be practical to use [[https://support.apple.com/guide/automator/welcome/mac][Automator]] to wrap the script
+as a application.
+
+[[file:/media/dropbox-tray.png]]
+
+* Nix
+
+Since I'm using [[https://nixos.org/nixos/][NixOS]] I like to do things like this in a nix ways.
+So in fact in my case I have ~profile/holmusk.nix~ file in my Dotfiles
+where I put these tiny things in:
+
+#+BEGIN_SRC nix
+{ config, pkgs, ... }:
+let
+  custom-home = "~/Holmusk-Home";
+
+  dropbox = with pkgs; writeScriptBin "dropbox-holmusk" ''
+    #!/usr/bin/env bash
+    set -e
+
+    # create home directory if it doesn't exist
+    mkdir -p ${custom-home}
+
+    # start dropbox for Holmusk team
+    HOME=${custom-home} ${dropbox}/bin/dropbox
+  '';
+
+  sync-rwe-assets = with pkgs; writeScriptBin "sync-rwe-assets" ''
+    #!/usr/bin/env bash
+    set -e
+
+    if [[ ! -f package.json ]]; then
+      echo "This command must be ran from frontend project directory!"
+      exit 1
+    fi
+
+    PROJECT_NAME=$(${jq}/bin/jq '.name' package.json | sed 's/"//g')
+
+    if [[ $PROJECT_NAME != "pi-frontend" ]]; then
+      echo "This is not RWE project!"
+      exit 1
+    fi
+
+    cp -r public/assets/theme ${custom-home}/Dropbox\ \(Holmusk\)/RWE\ Design/Assets\ -\ Web
+  '';
+in {
+  environment.systemPackages = [
+    dropbox
+    sync-rwe-assets
+  ];
+}
+#+END_SRC
+
+As you can see I also have another small script that automates sync
+of assets between project and Dropbox folder.
+My workflow is to export svg files for UI from [[https://www.figma.com/files/recent][Figma]], optimize them and put them to the project.
+This script is then used for sharing these extracted files back to Design team in case they need them.
+
+- Check presence of ~package.json~ in the directory.
+- Check ~name~ value in ~package.json~ - this script is related to specific project.
+- Copy files to ~Dropbox~ folder.
+
+* Wrap Up
+
+Shell scripts are terrible because the shell languages mostly are.
+Still it's the simplest way to automate smaller tasks in your workflow.
+Also Nix is awesome.

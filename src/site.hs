@@ -142,6 +142,7 @@ main = do
         -- Tags
         tags <- buildTags postsPattern (fromCapture "tags/*.html")
 
+        -- Posts
         match postsPattern $ do
             route $ setExtension "html"
             compile $ pandocCompiler
@@ -150,6 +151,12 @@ main = do
                 >>= loadAndApplyTemplate "templates/post.html" (postCtx tags)
                 >>= loadAndApplyTemplate "templates/default.html" (postCtx tags)
                 >>= relativizeUrls
+
+
+        -- Media
+        match "media/*" $ do
+            route idRoute
+            compile copyFileCompiler
 
         -- Favicon
         match "favicon.png" $ do
