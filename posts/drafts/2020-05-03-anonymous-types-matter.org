@@ -109,7 +109,7 @@ Run ~ghci~ and load the module (You'll likely get some warning you can ignore)
 Like Haskell, Elm has anonymous Tuples.
 
 #+BEGIN_SRC elm
-module TuplePlayground exposing (myPair)
+module Tuples exposing (myPair)
 
 type MyData = MyData Int
 
@@ -122,15 +122,15 @@ We can check type within repl (~elm repl~ command but presence of ~elm.json~ fil
 ---- Elm 0.19.1 ----------------------------------------------------------------
 Say :help for help and :exit to exit! More at <https://elm-lang.org/0.19.1/repl>
 --------------------------------------------------------------------------------
-> import TuplePlayground exposing (..)
+> import Tuples exposing (..)
 > myPair
 ("Foo",MyData 42) : ( String, MyData )
 #+END_SRC
 
 
 #+BEGIN_SRC haskell
-λ :l TuplePlayground.hs
-[1 of 1] Compiling Main             ( TuplePlayground.hs, interpreted )
+λ :l Tuples.hs
+[1 of 1] Compiling Main             ( Tuples.hs, interpreted )
 Ok, one module loaded.
 λ :t myPair
 myPair :: ([Char], MyData)
@@ -150,7 +150,7 @@ I'm using [[https://github.com/purescript/spago][spago]] as a build tool for PS 
 as because we need to manage dependencies in this case.
 
 #+BEGIN_SRC haskell
-module TuplePlayground where
+module Tuples where
 
 import Data.Tuple
 
@@ -168,7 +168,7 @@ Type :? for help
 
 import Prelude
 
-> import TuplePlayground
+> import Tuples
 > :t myPair
 Tuple String MyData
 #+END_SRC
@@ -303,7 +303,8 @@ but it also uses named rather than positional key!
 Folks who dislike Apps Hungarian (like me) will find Elm's `import qualified` by default as well as records more elegant.
 #+END_note
 
-Elm's records are anonymous.
+Elm's records are anonymous. Elm records are also so called /extensible records/.
+[[https://elm.christmas/2018/19][You won't belive what these records can do!]] article by Jonas Berdal provides more information about this feature.
 
 *** PureScript
 
@@ -328,3 +329,37 @@ We of course don't need to declare synonyms unless we want to:
 , lkj :: Int
 }
 #+END_SRC
+
+In PureScript aliases won't even give us function constructors like ~User : String -> Int -> User~.
+Instead there is special syntax for declaring function constructor we can use even without synonyms:
+
+#+BEGIN_SRC haskell
+:t { foo : _, bar : _ }
+forall t1 t2.
+  t1
+  -> t2
+     -> { bar :: t2
+        , foo :: t1
+        }
+#+END_SRC
+
+We also don't get ~.name~ style functions so we need to use ~[recod].[field]~ syntax:
+
+#+BEGIN_SRC haskell
+> { name : "Marek"}.name
+"Marek"
+#+END_SRC
+
+PureScript records has even more power provided by PS's row polymorphism.
+You can check [[https://qiita.com/kimagure/items/ca229cb4ba76db0c24a8][Making Diffs of differently-typed Records in PureScript]] article by Justin Woo
+if you're keen to learn more.
+
+*** Overview
+
+So based on our findings we can compile this overview:
+
+| Language   | Anonymous Tuples | Anonymous Records | Other Records Feature |
+|------------+------------------+-------------------+-----------------------|
+| Haskell    | yes              | no                | some via extensions   |
+| Elm        | yes              | yes               | "extensibility"       |
+| PureScript | no               | yes               | row polymorphism      |
