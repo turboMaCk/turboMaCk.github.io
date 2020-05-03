@@ -1,7 +1,7 @@
 ---
 title: Anonymous types matter
-subtitle: TBA
-description: TBA
+subtitle: Anonymous type synonyms are great tool for open APIs this is why.
+description: In typed FP we sometimes tend to overused closed design and opaque type. I'll try to make my case that in some situations we should actually go in exact opposite direction.
 tags: functional-programming, elm, haskell, pure-script
 ---
 
