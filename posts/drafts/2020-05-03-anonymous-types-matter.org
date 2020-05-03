@@ -1,0 +1,330 @@
+---
+title: Anonymous types matter
+subtitle: TBA
+description: TBA
+tags: functional-programming, elm, haskell, pure-script
+---
+
+So I recently released another Elm library. I wanted to have library like this for a long
+time but I was hoping someone else will come up with essentially the same design
+or implement the idea if I keep repeating it to enough people.
+Recently I finally found enough motivation to do the tedious work.
+I usually don't writing announcements to my releases but I think this particular case
+might include a bit controversial idea in its design. Anyway more about this later.
+I want to keep this post relatively general (because I'm not doing announcement posts).
+So lets talk a bit about anonymous types.
+
+This post will be primary about Elm but I'm going to talk about Haskell and Pure Script a bit as well.
+It should be simple to also map these things to OCaml and F# for readers which are into that sort of thing.
+I might even include some notes about those along the way.
+
+* What is Anonymous type
+
+Term "anonymous type" is somewhat semi official. If you lookup [[https://en.wikipedia.org/wiki/Anonymous_type][Wikipedia article]] you find
+there some languages include feature named "anonymous types". So hopefully there is something
+which we can be able to say about these things in general sens, don't we?
+
+#+BEGIN_QUOTE
+Anonymous types are a feature of C# 3.0, Visual Basic .NET 9.0, Oxygene, Scala and Go that allows data types to encapsulate
+a set of properties into a single object without having to first explicitly define a type.
+#+END_QUOTE
+
+If we would look closer into individual implementations it would be clear that this language feature
+essentially allows programmer to construct ~record~, ~struct~ or ~object~ (depending on language) type
+without declaration of a corresponding type.
+
+For purposes of this post I'm going to generalize this definition to all [[https://en.wikipedia.org/wiki/Product_type][product types]].
+
+#+BEGIN_note
+If I would attempt to define what /Anonymous Type/ is it would be something like:
+
+*Anonymous type a type of product type which doesn't require declaration for its construction.*
+Since all the information about the shape of product type can be infered at the time of construction
+(which is not true about sums) the declaration can be implicitly deduced.
+#+END_note
+
+In particular I mean that traditional tuple types from Haskell and OCaml are also anonymous types.
+
+
+#+BEGIN_SRC haskell
+newtype MyData = MyData { unMyData :: Int }
+
+myPair = ("Foo", MyData 42)
+#+END_SRC
+
+In the Haskell code above I'm constructing the pair of ~String~ and ~MyData~ and while I need
+to declare type of ~MyData~ I don't need to declare existence of pair in order to construct it
+and use it in type-safe manner.
+
+* Anonymous Types in a Wild
+
+Hopefully it should be I will be primary talking about records and tuples.
+Perhaps I should also mention that *I'm not going to talk about extensible records or
+row polymorphism much even though these can viewed as related topics.*
+This post it about plain simple records and tuples.
+
+Lack of anonymous first class records [[https://duckduckgo.com/?t=ffab&q=haskell+records][is causing some headaches in Haskell for ages]]. Some folks
+went even as far as staring to solve at least parts which are solvable in user space
+(without compiler changes) in projects like [[https://hackage.haskell.org/package/record][Record]].
+
+Presence of [[https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/anonymous-records][Anonymous records in F#]] is also one of its improvements over otherwise
+in many aspects related uncle OCaml.
+
+Since I don't want to assume familiarity with all, or even just single, of these laguages lets have a look
+on 3 of them as an examples for support of anonymous types. I choose Elm, Haskell and PureScript as these
+are the ones I'm most familiar with myself.
+
+#+BEGIN_note
+Worth noting there Elm has some (arguably confusing) naming inconsistency with Haskell and PureScript:
+
+| Declaration       | Haskell | PureScript | Elm        |
+|-------------------+---------+------------+------------|
+| data type         | data    | data       | type       |
+| unboxed data type | newtype | newtype    | type       |
+| synonym           | type    | type       | type alias |
+
+Please be aware of this as it can be pretty confusing
+#+END_note
+
+** Anonymous Tuples
+
+Tuples in Elm are fairly similar to Haskell ones which we've seen in example above already.
+/I'm still declaring my custom type just to illustrate that this doesn't work with predefined types only./
+This works with all the types which are definable within language.
+
+*** Haskell
+
+Let's check the Haskell one more time. This code is still the same as before:
+
+#+BEGIN_SRC haskell
+newtype MyData = MyData { unMyData :: Int }
+
+myPair = ("Foo", MyData 42)
+#+END_SRC
+
+Run ~ghci~ and load the module (You'll likely get some warning you can ignore)
+
+*** Elm
+
+Like Haskell, Elm has anonymous Tuples.
+
+#+BEGIN_SRC elm
+module TuplePlayground exposing (myPair)
+
+type MyData = MyData Int
+
+myPair = ("Foo", MyData 42)
+#+END_SRC
+
+We can check type within repl (~elm repl~ command but presence of ~elm.json~ file needed):
+
+#+BEGIN_SRC elm
+---- Elm 0.19.1 ----------------------------------------------------------------
+Say :help for help and :exit to exit! More at <https://elm-lang.org/0.19.1/repl>
+--------------------------------------------------------------------------------
+> import TuplePlayground exposing (..)
+> myPair
+("Foo",MyData 42) : ( String, MyData )
+#+END_SRC
+
+
+#+BEGIN_SRC haskell
+λ :l TuplePlayground.hs
+[1 of 1] Compiling Main             ( TuplePlayground.hs, interpreted )
+Ok, one module loaded.
+λ :t myPair
+myPair :: ([Char], MyData)
+#+END_SRC
+
+So yes Haskell does have anonymous types - tuples.
+
+*** PureScript
+
+Now let's try pure-script. PureScript is interesting
+as it does ship only with minimal language support
+but without standard library. This is a design decision which makes
+sense in wider design context but it also means PureScript
+doesn't ship with Tuples, support for these is provided by [[https://pursuit.purescript.org/packages/purescript-tuples/5.1.0][library]].
+
+I'm using [[https://github.com/purescript/spago][spago]] as a build tool for PS (which is sort of similar to [[https://docs.haskellstack.org][stack]])
+as because we need to manage dependencies in this case.
+
+#+BEGIN_SRC haskell
+module TuplePlayground where
+
+import Data.Tuple
+
+newtype MyData = MyData Int
+
+myPair = Tuple "Foo" (MyData 42)
+#+END_SRC
+
+I use ~spago repl~ to inspect type:
+
+#+BEGIN_SRC haskell
+[info] Installation complete.
+PSCi, version 0.13.6
+Type :? for help
+
+import Prelude
+
+> import TuplePlayground
+> :t myPair
+Tuple String MyData
+#+END_SRC
+
+So pure-script is slightly different. First the one needs a library for tuples,
+second it doesn't come with syntax sugar. If we look into definition of
+Tuple, we can see it's good old custom product type defined as:
+
+#+BEGIN_SRC haskell
+data Tuple a b = Tuple a b
+#+END_SRC
+
+~Data.Tuple.Nested~ provides bunch of aliases and type and value operator (~/\~) for convenience.
+We can also define our pair as following:
+
+#+BEGIN_SRC haskell
+myPair :: String /\ MyData
+myPair = "Foo" /\ MyData 42
+#+END_SRC
+
+This is re-occurring thing with type-script - it favores first class definitions over ad hoc syntax
+even more than Elm (Lists being nice example where Haskell provides more sugar than other two.)
+while having more first class constructs (type level operators, user definable value space operators - removed in Elm 0.19).
+
+Anyway, since Tuples in pure-script are not first-class (language construct), we definitely can't considered them being anonymous.
+Some of the aspect of this will perhaps become cleaner later. Anyway pure-script implementation also nicely demonstrates how it
+is possible to sort of emulate absence of anonymous type in a laguage within user space:
+
+- Define general custom type
+- Provide functions to work with the general type
+- Make it easy to define more specific types based on this general ones
+- Make sure everybody is using the same definition (this definition) of general type to define their own
+
+I also want to note that absence of built-in tuples in not much of a problem in PureScript in practice
+as its record types and row polymorphism fills the purpose anyway. I personally still think that it's
+nice to have first class tuples in some cases anyway.
+
+** Records
+
+Record is another example of product type which we might want to make anonymous. Lets look at the three languages
+and their records:
+
+*** Haskell
+
+So Haskell records are sort of problematic. Let's first have a look on what we (sort of) can't do:
+
+#+BEGIN_SRC haskell
+data User = User { name :: String, age :: Int }
+data Project = Project { name :: String, description :: String }
+#+END_SRC
+
+This fails with an error.
+
+#+BEGIN_SRC shell
+Records.hs:2:26: error:
+    Multiple declarations of ‘name’
+    Declared at: Records.hs:1:20
+                 Records.hs:2:26
+  |
+2 | data Project = Project { name :: String, description :: String }
+  |                          ^^^^
+Failed, no modules loaded.
+#+END_SRC
+
+This is because Haskell records are just regular custom product types like ~data User = User String Int~
+but with auto generated getter and setter functions. To fix this problem we need to ~:set -XDuplicateRecordFields~.
+
+Anyway if we do so we loose ability to use getter and setter:
+
+#+BEGIN_SRC shell
+λ :t name
+
+<interactive>:1:1: error:
+    Ambiguous occurrence ‘name’
+    It could refer to
+       either the field ‘name’, defined at Records.hs:2:26
+           or the field ‘name’, defined at Records.hs:1:20
+#+END_SRC
+
+So in order to make records usable one needs to allow some other extension like ~XRecordWildCards~.
+
+These two extensions apparently became [[https://ocharles.org.uk/blog/posts/2014-12-04-record-wildcards.html][iconic duo]]. Since there is so much about how one can go about
+dealing with Haskell records but I don't want to spent too much time on it there is a list of links for detailed articles:
+
+- 24 Days of GHC Extensions: [[https://ocharles.org.uk/blog/posts/2014-12-04-record-wildcards.html][Record Wildcards]] by Ollie Charles
+- [[https://kodimensional.dev/recordwildcards][The Power of RecordWildCards]] by Dmitrii Kovanikov
+- GHC docs [[https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/disambiguate_record_fields.html][DisambiguateRecordFields]]
+- [[https://hackage.haskell.org/package/record][Record]] by Nikita Volkov
+
+Haskell's records are definitely not anonymous. Common usage of [[https://en.wikipedia.org/wiki/Hungarian_notation][Hungarian notation]] is a not so nice reminder
+that Haskell of Haskell's relation to Microsoft research (don't take this joke too seriously).
+
+*** Elm
+
+In elm on the other hand we can easily do this:
+
+#+BEGIN_SRC elm
+module Records exposing (..)
+
+type alias User = { name : String, age : Int }
+type alias Project = { name : String, description : String }
+#+END_SRC
+
+As you can see these records are defined as synonyms (aliases) to already "existing" types,
+not a type definition itself. We don't even need to declare them at all:
+
+#+BEGIN_SRC elm
+> foo = { asdf = "asdf", lkj = -1 }
+{ asdf = "asdf", lkj = -1 }
+    : { asdf : String, lkj : number }
+#+END_SRC
+
+Defining record aliases though gives are both ability to refer to the record by the synonym name
+as well as function constructor for record values.
+
+#+BEGIN_SRC elm
+> User
+<function> : String -> Int -> User
+#+END_SRC
+
+Further more elm gives us polymorphic getters and setters:
+
+#+BEGIN_SRC elm
+> .name
+<function> : { b | name : a } -> a
+#+END_SRC
+
+~.name~ as well as ~foo.name~ will work with any records which has name filed of any type. This is much like a ~fst~ or ~Tupple.first~ function
+but it also uses named rather than positional key!
+
+#+BEGIN_note
+Folks who dislike Apps Hungarian (like me) will find Elm's `import qualified` by default as well as records more elegant.
+#+END_note
+
+Elm's records are anonymous.
+
+*** PureScript
+
+Now for the PureScript:
+
+#+BEGIN_SRC haskell
+module Records where
+
+type User = { name :: String, age :: Int }
+type Project = { name :: String, description :: String }
+#+END_SRC
+
+Unlike Haskell (without language extensions) and like Elm, this code is perfectly fine.
+Also like Elm we're just declaring synonyms to existing general record type here.
+
+We of course don't need to declare synonyms unless we want to:
+
+#+BEGIN_SRC haskell
+> foo = { asdf : "asdf", lkj : -1 }
+> :t foo
+{ asdf :: String
+, lkj :: Int
+}
+#+END_SRC

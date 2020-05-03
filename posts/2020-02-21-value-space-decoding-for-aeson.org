@@ -3,7 +3,7 @@ title: Value Space Decoding for Aeson
 subtitle: Implementation of combinators for JSON decoding in Haskell
 description: Extending Aeson api with value level combinators and Decoder type.
 reddit: r/haskell/comments/f7crdb/combinators_for_json_decoding
-tags: haskell, web
+tags: haskell, functional-programming
 ---
 
 I've learned to like the way JSON decoding works in Elm[fn:1].

@@ -22,10 +22,10 @@ let
           hlibsass = super.hlibsass.override {
             inherit libsass;
           };
-          hakyll = super.hakyll.overrideAttrs(old: {
-            configureFlags = "-f watchServer -f previewServer";
-            patches = [./hakyll.patch];
-          });
+          #hakyll = super.hakyll.overrideAttrs(old: {
+            #configureFlags = "-f watchServer -f previewServer";
+            #patches = [./hakyll.patch];
+          #});
           site =
             self.callPackage ./site.nix {};
         };
