@@ -300,7 +300,7 @@ Further more elm gives us polymorphic getters and setters:
 but it also uses named rather than positional key!
 
 #+BEGIN_note
-Folks who dislike Apps Hungarian (like me) will find Elm's `import qualified` by default as well as records more elegant.
+Folks who dislike Apps Hungarian (like me) will find Elm's ~import qualified~ by default as well as records more elegant.
 #+END_note
 
 Elm's records are anonymous. Elm records are also so called /extensible records/.
@@ -343,11 +343,11 @@ forall t1 t2.
         }
 #+END_SRC
 
-We also don't get ~.name~ style functions so we need to use ~[recod].[field]~ syntax:
+We also don't get ~.name~ style functions so we need to use ~{record}.{field}~ syntax:
 
 #+BEGIN_SRC haskell
-> { name : "Marek"}.name
-"Marek"
+> { name : "Jane Doe"}.name
+"Jane Doe"
 #+END_SRC
 
 PureScript records has even more power provided by PS's row polymorphism.
@@ -363,3 +363,84 @@ So based on our findings we can compile this overview:
 | Haskell    | yes              | no                | some via extensions   |
 | Elm        | yes              | yes               | "extensibility"       |
 | PureScript | no               | yes               | row polymorphism      |
+
+* Why Anonymous Types Matter
+
+Anonymous types fill certain needs in software design pretty well.
+This goes back to the open/closed principles [[/posts/2019-08-14-avoiding-pattern-matching-refunctionalization.html][I wrote about some time ago]] as well
+as [[/posts/2020-02-21-value-space-decoding-for-aeson.html][Value Space Decoding For Aeson article]].
+
+In all three languages we have whole spectrum of types which help to craft APIs
+with the right properties. This is a comparison of a few points on this scale from
+most closed to most open types
+
+| Type           | Open/Closed     | Description                                                          |
+|----------------+-----------------+----------------------------------------------------------------------|
+| Opaque type    | strictly closed | Type can't be constructed and deconstructed outside of module        |
+| Custom variant | closed          | Type is defined in specific module we require to understand the type |
+| Common variant | almost opened   | Like custom variant by known expected to universally available       |
+| Anonymous type | opened          | Completely independent of it's definition, compatible by structure   |
+
+Depending on the nature of the API or data different level of openness/closeness might be appropriate.
+
+** Opaque Types
+
+Construction a Deconstruction and therefore all implementation details are available to
+just a single (or limited number of) module. Useful for hiding details and internal invariants.
+
+** Custom Variant
+
+Constructors are exposed but working with type requires importing the module and using its
+definition (or synonyms for that definition). Useful for capturing semantics etc.
+
+** Common Variant
+
+Same as [[#custom-variant][Custom Variant]] but expected to be available for variety of packages. This is especially
+true about variants provided by standard library of official packages.
+
+** Anonymous Type
+
+Synonyms on these doesn't require knowledge of the type definition or particular implementation.
+Declared by structure, not by place of definition.
+
+* Non-Empty List as Anonymous Type Synonym
+
+I believe that, especially in Elm, it makes sense to use alias to anonymous type
+for definition of [[https://hackage.haskell.org/package/semigroups-0.18.1/docs/Data-List-NonEmpty.html][non-empty list]] rather than variant.
+In particular I think the pair ~(a, List a)~ is a good representation for non empty
+as the type itself is descriptive enough and positional nature of tuple fits
+purpose of representing sequential data structure well.
+
+I'm saying /especially in Elm/ because:
+
+1. Unlike in Haskell, non-empty list is not part of elm/core
+2. Unlike in PureScript there is not single implementation folks are expected to use.
+3. It might be desirable for libraries to produce compatible type without dependency on a specific implementation (or any at all)
+4. Functions and libraries which already produce compatible par would be compatible
+5. Folks who don't like or are not familiar with abstraction can use elm/core functions to work with it anyway
+6. Code generators from languages with default non-empty list can produce elm definition without picking implementation.
+
+This doesn't mean there wouldn't be some benefits of similar implementation in Haskell as well,
+[[https://twitter.com/fried_brice/status/1232773993507147776][some folks would like it]], I just think that in Elm in particular the benefits overweight the negatives.
+
+1. Less semantically expressive constructor (in pattern matching)
+2. Potentially encouraging even more fragmentation in implementations (or diversity, depends on where you stand).
+
+(All of) That being said -- I've actually implemented this library and it's already available to
+you to play with as [[https://package.elm-lang.org/packages/turboMaCk/non-empty-list-alias/latest/][turboMaCk/non-empty-list-alias]].
+
+- [[https://package.elm-lang.org/packages/turboMaCk/non-empty-list-alias/latest/][Documentation]]
+- [[https://github.com/turboMaCk/non-empty-list-alias][Repository]]
+
+* Conclusion
+
+I hope I was somewhat able to explain motivation behind this design
+and perhaps even help to clear some intuition around different levels of power
+we have in our type systems. I know this topic sounds mostly banal but I strongly belive
+that solid understanding of basics goes a log way in understanding more advanced concepts
+and helps with API design a ton.
+
+I'm pretty sure there are and will always be some users who won't give up their semantically
+more expressive definition of non-empty-list constructor and I think that's fine as long
+as we all understand the trade-off. Luckily both alias to pair and custom variants
+are isomorphic so it's just matter of practicality and nothing more.
