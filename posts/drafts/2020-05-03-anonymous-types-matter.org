@@ -5,96 +5,71 @@ description: In typed FP we sometimes tend to overuse closed design with opaque 
 tags: functional-programming, elm, haskell, pure-script
 ---
 
-So I recently released another Elm library. I wanted to have library like this for a long
-time but I was hoping someone else will come up with essentially the same design
-or implement the idea if I keep repeating it to enough people.
-Recently I finally found enough motivation to do the tedious work.
-I usually don't writing announcements to my releases but I think this particular case
-might include a bit controversial idea in its design. Anyway more about this later.
-I want to keep this post relatively general (because I'm not doing announcement posts).
-So lets talk a bit about anonymous types.
+So I recently released another Elm library. I wished to have library like this for a long
+time but I was hoping someone else will come up the same design eventually.
+Few weeks ago I finally found enough motivation to do the tedious work and code it.
+Usually I don't write announcements to my releases but I think in this particular case
+the design idea might be a bit controversial so I think it's worth the explanation.
+More about this later. I want to keep this post relatively general so it's not really an announcement post either.
+I just want to talk a bit about anonymous types.
 
-This post will be primary about Elm but I'm going to talk about Haskell and Pure Script a bit as well.
-It should be simple to also map these things to OCaml and F# for readers which are into that sort of thing.
-I might even include some notes about those along the way.
+This post will be primarily about Elm but I'm going to talk about Haskell and PureScript a bit as well.
+It should be also simple to map these ideas to OCaml and F# if that's your cup of tea.
 
-* What is Anonymous type
+* What is an Anonymous Type?
 
-Term "anonymous type" is somewhat semi official. If you lookup [[https://en.wikipedia.org/wiki/Anonymous_type][Wikipedia article]] you find
-there some languages include feature named "anonymous types". So hopefully there is something
-which we can be able to say about these things in general sens, don't we?
+Term "anonymous type" is somewhat semi-technical. If you lookup for [[https://en.wikipedia.org/wiki/Anonymous_type][Wikipedia article]] you find
+some programming languages do actually include feature named "anonymous types".
+So hopefully there are some similarities between these implementations.
 
 #+BEGIN_QUOTE
 Anonymous types are a feature of C# 3.0, Visual Basic .NET 9.0, Oxygene, Scala and Go that allows data types to encapsulate
 a set of properties into a single object without having to first explicitly define a type.
 #+END_QUOTE
 
-If we would look closer into individual implementations it would be clear that this language feature
-essentially allows programmer to construct ~record~, ~struct~ or ~object~ (depending on language) type
-without declaration of a corresponding type.
+If you look closer into individual implementations you would  find out that this feature
+essentially allows programmer to construct ~record~ ~struct~ or ~object~ value (depending on language terminology and features)
+without need to declare the corresponding type first.
 
-For purposes of this post I'm going to generalize this definition to all [[https://en.wikipedia.org/wiki/Product_type][product types]].
+For purposes of this post I'm going to generalize the definition to include all [[https://en.wikipedia.org/wiki/Product_type][product types]]
+to potentially satisfy (or not) the condition of being anonymous.
+In particular I mean that traditional tuple types from Haskell or ML are also anonymous types.
 
 #+BEGIN_note
-If I would attempt to define what /Anonymous Type/ is it would be something like:
+If I would attempt to define what /Anonymous Type/ is it the definition would be something like this:
 
-*Anonymous type a type of product type which doesn't require declaration for its construction.*
+*Anonymous type is a product type who's values can be constructed without type declaration*.
 Since all the information about the shape of product type can be infered at the time of construction
-(which is not true about sums) the declaration can be implicitly deduced.
+(which is not true about variant) type can be deduced directly from the value.
 #+END_note
-
-In particular I mean that traditional tuple types from Haskell and OCaml are also anonymous types.
-
-
-#+BEGIN_SRC haskell
-newtype MyData = MyData { unMyData :: Int }
-
-myPair = ("Foo", MyData 42)
-#+END_SRC
-
-In the Haskell code above I'm constructing the pair of ~String~ and ~MyData~ and while I need
-to declare type of ~MyData~ I don't need to declare existence of pair in order to construct it
-and use it in type-safe manner.
 
 * Anonymous Types in a Wild
 
-Hopefully it should be I will be primary talking about records and tuples.
-Perhaps I should also mention that *I'm not going to talk about extensible records or
-row polymorphism much even though these can viewed as related topics.*
-This post it about plain simple records and tuples.
+I will be primary talking about records and tuples as it is hard to imagine how would custom product type even suppose to look like.
+Perhaps I should also mention that *I'm not going to talk about extensible records or row polymorphism.*
+This post it about plain simple boring records and tuples.
 
-Lack of anonymous first class records [[https://duckduckgo.com/?t=ffab&q=haskell+records][is causing some headaches in Haskell for ages]]. Some folks
-went even as far as staring to solve at least parts which are solvable in user space
-(without compiler changes) in projects like [[https://hackage.haskell.org/package/record][Record]].
-
-Presence of [[https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/anonymous-records][Anonymous records in F#]] is also one of its improvements over otherwise
-in many aspects related uncle OCaml.
-
-Since I don't want to assume familiarity with all, or even just single, of these laguages lets have a look
-on 3 of them as an examples for support of anonymous types. I choose Elm, Haskell and PureScript as these
-are the ones I'm most familiar with myself.
+Since I don't want to assume deep familiarity with all, or even just a single, language I'm going to mention I'm going to use
+simple code examples for demonstration. I choose Elm, Haskell and PureScript as these
+are good examples I'm familiar with myself.
 
 #+BEGIN_note
 Worth noting there Elm has some (arguably confusing) naming inconsistency with Haskell and PureScript:
 
-| Declaration       | Haskell | PureScript | Elm        |
-|-------------------+---------+------------+------------|
-| data type         | data    | data       | type       |
-| unboxed data type | newtype | newtype    | type       |
-| synonym           | type    | type       | type alias |
-
-Please be aware of this as it can be pretty confusing
+| Language   | Data Type | Unboxed Data Type | Type Synonym |
+|------------+-----------+-------------------+--------------|
+| Haskell    | data      | newtype           | type         |
+| PureScript | data      | newtype           | type         |
+| Elm        | type      | type (inferred)   | type alias   |
 #+END_note
 
 ** Anonymous Tuples
 
-Tuples in Elm are fairly similar to Haskell ones which we've seen in example above already.
-/I'm still declaring my custom type just to illustrate that this doesn't work with predefined types only./
-This works with all the types which are definable within language.
+Tuple is a sequence of elements.
 
 *** Haskell
 
-Let's check the Haskell one more time. This code is still the same as before:
+This is the Haskell syntax for defining a tuple (pair in this case):
 
 #+BEGIN_SRC haskell
 newtype MyData = MyData { unMyData :: Int }
@@ -102,11 +77,23 @@ newtype MyData = MyData { unMyData :: Int }
 myPair = ("Foo", MyData 42)
 #+END_SRC
 
-Run ~ghci~ and load the module (You'll likely get some warning you can ignore)
+If we run the ~ghci~ and load the module we can inspect the type of the value:
+
+#+BEGIN_SRC haskell
+λ :l Tuples.hs
+[1 of 1] Compiling Main             ( Tuples.hs, interpreted )
+Ok, one module loaded.
+λ :t myPair
+myPair :: ([Char], MyData)
+#+END_SRC
+
+This is the behavior we would expect from anonymous type.
+Without declaration of existence of given pair we were able to construct
+which holds ~String~ value and our custom type ~MyData~.
 
 *** Elm
 
-Like Haskell, Elm has anonymous Tuples.
+Elm has tuples very similar to the ones Haskell has:
 
 #+BEGIN_SRC elm
 module Tuples exposing (myPair)
@@ -116,7 +103,7 @@ type MyData = MyData Int
 myPair = ("Foo", MyData 42)
 #+END_SRC
 
-We can check type within repl (~elm repl~ command but presence of ~elm.json~ file needed):
+To check the type we can fire repl again (use ~elm repl~ command. Be aware that presence of ~elm.json~ file required):
 
 #+BEGIN_SRC elm
 ---- Elm 0.19.1 ----------------------------------------------------------------
@@ -127,26 +114,18 @@ Say :help for help and :exit to exit! More at <https://elm-lang.org/0.19.1/repl>
 ("Foo",MyData 42) : ( String, MyData )
 #+END_SRC
 
-
-#+BEGIN_SRC haskell
-λ :l Tuples.hs
-[1 of 1] Compiling Main             ( Tuples.hs, interpreted )
-Ok, one module loaded.
-λ :t myPair
-myPair :: ([Char], MyData)
-#+END_SRC
-
-So yes Haskell does have anonymous types - tuples.
+This is the same situation as with Haskell.
 
 *** PureScript
 
-Now let's try pure-script. PureScript is interesting
-as it does ship only with minimal language support
+PureScript is interesting as it does ship only with minimal language support
 but without standard library. This is a design decision which makes
-sense in wider design context but it also means PureScript
-doesn't ship with Tuples, support for these is provided by [[https://pursuit.purescript.org/packages/purescript-tuples/5.1.0][library]].
+sense in wider design context. PureScript doesn't ship with support for tuples.
+Support for tuples is provided by optional [[https://pursuit.purescript.org/packages/purescript-tuples/5.1.0][library]] but this also means that
+there tuples are not build into the language which is one of the requirement
+to make them truly anonymous as oppose to defined in terms of parameterized type.
 
-I'm using [[https://github.com/purescript/spago][spago]] as a build tool for PS (which is sort of similar to [[https://docs.haskellstack.org][stack]])
+I'm using [[https://github.com/purescript/spago][spago]] as a build tool for PS (which is sort of similar to [[https://docs.haskellstack.org][stack]] in Haskell world)
 as because we need to manage dependencies in this case.
 
 #+BEGIN_SRC haskell
@@ -159,7 +138,7 @@ newtype MyData = MyData Int
 myPair = Tuple "Foo" (MyData 42)
 #+END_SRC
 
-I use ~spago repl~ to inspect type:
+Run ~spago repl~ to inspect the type:
 
 #+BEGIN_SRC haskell
 [info] Installation complete.
@@ -173,9 +152,8 @@ import Prelude
 Tuple String MyData
 #+END_SRC
 
-So pure-script is slightly different. First the one needs a library for tuples,
-second it doesn't come with syntax sugar. If we look into definition of
-Tuple, we can see it's good old custom product type defined as:
+So PureScript is clearly different. If we look into definition of
+~Tuple~, we can see it's good old custom product type:
 
 #+BEGIN_SRC haskell
 data Tuple a b = Tuple a b
@@ -189,7 +167,12 @@ myPair :: String /\ MyData
 myPair = "Foo" /\ MyData 42
 #+END_SRC
 
-This is re-occurring thing with type-script - it favores first class definitions over ad hoc syntax
+In fact this way of defining tuples is pretty close to the mathematical definition.
+
+
+--- here
+
+This is re-occurring thing with PureScript - it favores first class definitions over ad hoc syntax
 even more than Elm (Lists being nice example where Haskell provides more sugar than other two.)
 while having more first class constructs (type level operators, user definable value space operators - removed in Elm 0.19).
 
@@ -213,7 +196,9 @@ and their records:
 
 *** Haskell
 
-So Haskell records are sort of problematic. Let's first have a look on what we (sort of) can't do:
+The lack of anonymous first class records [[https://duckduckgo.com/?t=ffab&q=haskell+records][is causing some headaches in Haskell for ages]]. Some folks
+went even as far as staring to solve at least parts which are solvable in user space
+(without compiler changes) in projects like [[https://hackage.haskell.org/package/record][Record]].
 
 #+BEGIN_SRC haskell
 data User = User { name :: String, age :: Int }
@@ -377,8 +362,8 @@ most closed to most open types
 | Type           | Open/Closed     | Description                                                          |
 |----------------+-----------------+----------------------------------------------------------------------|
 | Opaque type    | strictly closed | Type can't be constructed and deconstructed outside of module        |
-| Custom variant | closed          | Type is defined in specific module we require to understand the type |
-| Common variant | almost opened   | Like custom variant by known expected to universally available       |
+| Custom ADT | closed          | Type is defined in specific module we require to understand the type |
+| Common ADT | almost opened   | Like custom ADT by known expected to universally available    |
 | Anonymous type | opened          | Completely independent of it's definition, compatible by structure   |
 
 Depending on the nature of the API or data different level of openness/closeness might be appropriate.
@@ -388,15 +373,15 @@ Depending on the nature of the API or data different level of openness/closeness
 Construction a Deconstruction and therefore all implementation details are available to
 just a single (or limited number of) module. Useful for hiding details and internal invariants.
 
-** Custom Variant
+** Custom ADT
 
 Constructors are exposed but working with type requires importing the module and using its
 definition (or synonyms for that definition). Useful for capturing semantics etc.
 
-** Common Variant
+** Common ADT
 
-Same as [[#custom-variant][Custom Variant]] but expected to be available for variety of packages. This is especially
-true about variants provided by standard library of official packages.
+Same as [[#custom-adt][Custom ADT]] but expected to be available for variety of packages. This is especially
+true about ADTs provided by standard library of official packages.
 
 ** Anonymous Type
 
@@ -406,7 +391,7 @@ Declared by structure, not by place of definition.
 * Non-Empty List as Anonymous Type Synonym
 
 I believe that, especially in Elm, it makes sense to use alias to anonymous type
-for definition of [[https://hackage.haskell.org/package/semigroups-0.18.1/docs/Data-List-NonEmpty.html][non-empty list]] rather than variant.
+for definition of [[https://hackage.haskell.org/package/semigroups-0.18.1/docs/Data-List-NonEmpty.html][non-empty list]] rather than ADT.
 In particular I think the pair ~(a, List a)~ is a good representation for non empty
 as the type itself is descriptive enough and positional nature of tuple fits
 purpose of representing sequential data structure well.
@@ -442,5 +427,5 @@ and helps with API design a ton.
 
 I'm pretty sure there are and will always be some users who won't give up their semantically
 more expressive definition of non-empty-list constructor and I think that's fine as long
-as we all understand the trade-off. Luckily both alias to pair and custom variants
+as we all understand the trade-off. Luckily both alias to pair and custom ADTs
 are isomorphic so it's just matter of practicality and nothing more.
