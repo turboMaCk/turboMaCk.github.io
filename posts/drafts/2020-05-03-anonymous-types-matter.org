@@ -339,7 +339,7 @@ PureScript records has even more power provided by PS's row polymorphism.
 You can check [[https://qiita.com/kimagure/items/ca229cb4ba76db0c24a8][Making Diffs of differently-typed Records in PureScript]] article by Justin Woo
 if you're keen to learn more.
 
-*** Overview
+** Overview
 
 So based on our findings we can compile this overview:
 
@@ -349,7 +349,7 @@ So based on our findings we can compile this overview:
 | Elm        | yes              | yes               | "extensibility"       |
 | PureScript | no               | yes               | row polymorphism      |
 
-* Why Anonymous Types Matter
+* Why Anonymous Types Matter?
 
 Anonymous types fill certain needs in software design pretty well.
 This goes back to the open/closed principles [[/posts/2019-08-14-avoiding-pattern-matching-refunctionalization.html][I wrote about some time ago]] as well
@@ -368,27 +368,27 @@ most closed to most open types
 
 Depending on the nature of the API or data different level of openness/closeness might be appropriate.
 
-** Opaque Types
+*** Opaque Types
 
 Construction a Deconstruction and therefore all implementation details are available to
 just a single (or limited number of) module. Useful for hiding details and internal invariants.
 
-** Custom ADT
+*** Custom ADT
 
 Constructors are exposed but working with type requires importing the module and using its
 definition (or synonyms for that definition). Useful for capturing semantics etc.
 
-** Common ADT
+*** Common ADT
 
 Same as [[#custom-adt][Custom ADT]] but expected to be available for variety of packages. This is especially
 true about ADTs provided by standard library of official packages.
 
-** Anonymous Type
+*** Anonymous Type
 
 Synonyms on these doesn't require knowledge of the type definition or particular implementation.
 Declared by structure, not by place of definition.
 
-* Non-Empty List as Anonymous Type Synonym
+* Non-Empty List as Anonymous Type
 
 I believe that, especially in Elm, it makes sense to use alias to anonymous type
 for definition of [[https://hackage.haskell.org/package/semigroups-0.18.1/docs/Data-List-NonEmpty.html][non-empty list]] rather than ADT.
