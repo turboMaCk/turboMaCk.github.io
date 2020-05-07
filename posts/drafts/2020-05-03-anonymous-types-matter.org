@@ -1,25 +1,26 @@
 ---
 title: Anonymous types matter
-subtitle: Anonymous type synonyms are great tool for open APIs this is why.
+subtitle: Anonymous type synonyms are great tool for opening your APIs.
 description: In typed FP we sometimes tend to overuse closed design with opaque data. I'll try to make my case that in some situations we should actually go in exact opposite direction.
 tags: functional-programming, elm, haskell, pure-script
 ---
 
 So I recently released another Elm library. I wished to have library like this for a long
-time but I was hoping someone else will come up the same design eventually.
+time but I was hoping someone else will come up the same design idea eventually.
 Few weeks ago I finally found enough motivation to do the tedious work and code it.
 Usually I don't write announcements to my releases but I think in this particular case
 the design idea might be a bit controversial so I think it's worth the explanation.
-More about this later. I want to keep this post relatively general so it's not really an announcement post either.
+I want to keep this post relatively general so it's not really an announcement post neither.
 I just want to talk a bit about anonymous types.
 
-This post will be primarily about Elm but I'm going to talk about Haskell and PureScript a bit as well.
-It should be also simple to map these ideas to OCaml and F# if that's your cup of tea.
+This post will be primarily about Elm but I'm going to compare it to Haskell and PureScript as well.
+It should be also simple to map these ideas to OCaml and F# (or any other language
+with similar type system ML, Rust, Idris..) if that's your cup of tea.
 
 * What is an Anonymous Type?
 
-Term "anonymous type" is somewhat semi-technical. If you lookup for [[https://en.wikipedia.org/wiki/Anonymous_type][Wikipedia article]] you find
-some programming languages do actually include feature named "anonymous types".
+Term "/anonymous type/" is somewhat semi-technical. If you lookup [[https://en.wikipedia.org/wiki/Anonymous_type][Wikipedia article]] you find
+some programming languages do actually include feature named "/anonymous types/" though.
 So hopefully there are some similarities between these implementations.
 
 #+BEGIN_QUOTE
@@ -27,7 +28,7 @@ Anonymous types are a feature of C# 3.0, Visual Basic .NET 9.0, Oxygene, Scala a
 a set of properties into a single object without having to first explicitly define a type.
 #+END_QUOTE
 
-If you look closer into individual implementations you would  find out that this feature
+If you look closer into how these features work you would find out that it
 essentially allows programmer to construct ~record~ ~struct~ or ~object~ value (depending on language terminology and features)
 without need to declare the corresponding type first.
 
@@ -38,23 +39,39 @@ In particular I mean that traditional tuple types from Haskell or ML are also an
 #+BEGIN_note
 If I would attempt to define what /Anonymous Type/ is it the definition would be something like this:
 
-*Anonymous type is a product type who's values can be constructed without type declaration*.
+*Anonymous type is a product type who's values can be constructed without explicit type declaration*.
 Since all the information about the shape of product type can be infered at the time of construction
 (which is not true about variant) type can be deduced directly from the value.
+This should also already suggest that anonymity is provided by language itself not by its libraries.
+
+This is not to be confused by type inference which is able to deduce the type of a value.
+However type inference still requires the type to be declared, it just doesn't require
+declaration of type on a value. For instance in this example Elm code:
+
+#+BEGIN_SRC elm
+type Object = Earth | Mars | Moon | Sun
+
+destination = Mars
+#+END_SRC
+
+the type of ~destination~ is infered as ~Object~ but the declaration of ~Object~ type is required.
+
+If you want to diff into much more advanced topic of anonymous variants check
+[[http://comonad.com/reader/2008/the-cofree-comonad-and-the-expression-problem/][The Cofree Comonad and the Expression Problem]] by Edward Kmett.
 #+END_note
 
 * Anonymous Types in a Wild
 
-I will be primary talking about records and tuples as it is hard to imagine how would custom product type even suppose to look like.
+I will be primary talking about records and tuples as I don't really want to attempt to solve [[https://en.wikipedia.org/wiki/Expression_problem][the expression problem]] here.
 Perhaps I should also mention that *I'm not going to talk about extensible records or row polymorphism.*
 This post it about plain simple boring records and tuples.
 
-Since I don't want to assume deep familiarity with all, or even just a single, language I'm going to mention I'm going to use
-simple code examples for demonstration. I choose Elm, Haskell and PureScript as these
+Since I don't want to assume deep familiarity with all or even just a single language I'm going to mention I will use
+simple code examples for demonstrations. I've chosen Haskell Elm and PureScript as these
 are good examples I'm familiar with myself.
 
 #+BEGIN_note
-Worth noting there Elm has some (arguably confusing) naming inconsistency with Haskell and PureScript:
+Be aware that Elm has some (arguably confusing) naming inconsistency with Haskell and PureScript:
 
 | Language   | Data Type | Unboxed Data Type | Type Synonym |
 |------------+-----------+-------------------+--------------|
@@ -65,7 +82,11 @@ Worth noting there Elm has some (arguably confusing) naming inconsistency with H
 
 ** Anonymous Tuples
 
-Tuple is a sequence of elements.
+Tuple is a sequence of elements. You can think about it as about struct which values are accessed by index.
+It has fixed size and each value in a slot has specific type.
+
+In examples below I'm also defining custom type just to make it obvious that tuple can hold any type of value
+even the one which is not know to the standard library.
 
 *** Haskell
 
@@ -88,14 +109,15 @@ myPair :: ([Char], MyData)
 #+END_SRC
 
 This is the behavior we would expect from anonymous type.
-Without declaration of existence of given pair we were able to construct
-which holds ~String~ value and our custom type ~MyData~.
+We're given syntax to construct tuple in any module which results
+in value of compatible type.
 
 *** Elm
 
-Elm has tuples very similar to the ones Haskell has:
+Elm has tuples very similar to the Haskell:
 
 #+BEGIN_SRC elm
+-- Elm requires module definition
 module Tuples exposing (myPair)
 
 type MyData = MyData Int
@@ -120,8 +142,9 @@ This is the same situation as with Haskell.
 
 PureScript is interesting as it does ship only with minimal language support
 but without standard library. This is a design decision which makes
-sense in wider design context. PureScript doesn't ship with support for tuples.
-Support for tuples is provided by optional [[https://pursuit.purescript.org/packages/purescript-tuples/5.1.0][library]] but this also means that
+sense in wider context of PureScript's design.
+But it also means that PureScript doesn't ship with support for tuples.
+Tuples are provided by optional [[https://pursuit.purescript.org/packages/purescript-tuples/5.1.0][library]] instead.
 there tuples are not build into the language which is one of the requirement
 to make them truly anonymous as oppose to defined in terms of parameterized type.
 
