@@ -397,47 +397,56 @@ uses tuple).
  - Haskell ~uncons :: [a] -> Maybe (a, [a])~
 
 An example where both Elm and PureScript might favor record while Haskell often are arguments to
-a functions where named key might bring more semantic clarity into the API. For instance with
-arguments for networking functions.
+a functions with many arguments. For these records can work as substitution for named arguments (which OCaml has but Haskell does not).
+Using record with named fields brings additional semantic clarity, making it easier to understand the API.
+For instance with arguments for networking functions.
 
-* Non-Empty List as Anonymous Type
+* Non-Empty List as Synonym
 
-I believe that, especially in Elm, it makes sense to use alias to anonymous type
-for definition of [[https://hackage.haskell.org/package/semigroups-0.18.1/docs/Data-List-NonEmpty.html][non-empty list]] rather than ADT.
-In particular I think the pair ~(a, List a)~ is a good representation for non empty
-as the type itself is descriptive enough and positional nature of tuple fits
-purpose of representing sequential data structure well.
+About a week ago I've published [[https://package.elm-lang.org/packages/turboMaCk/non-empty-list-alias/latest/][non-empty-list-alias library]] for Elm.
+In my opinion there are several benefits of defining non-empty list
+in terms of ~(a, List a)~ especially in Elm.
 
-I'm saying /especially in Elm/ because:
+It's common to define non empty list type as ~type NonEmpty a = Cons a (List a)~
+and this several libraries that does this already exist.
+This is also quite close to definition of [[https://hackage.haskell.org/package/base-4.14.0.0/docs/Data-List-NonEmpty.html#g:1][Data.List.NonEmpty]] in Haskell's base.
 
-1. Unlike in Haskell, non-empty list is not part of elm/core
-2. Unlike in PureScript there is not single implementation folks are expected to use.
-3. It might be desirable for libraries to produce compatible type without dependency on a specific implementation (or any at all)
-4. Functions and libraries which already produce compatible par would be compatible
-5. Folks who don't like or are not familiar with abstraction can use elm/core functions to work with it anyway
-6. Code generators from languages with default non-empty list can produce elm definition without picking implementation.
+I think synonym definition is especially good suited in Elm because:
 
-This doesn't mean there wouldn't be some benefits of similar implementation in Haskell as well,
-[[https://twitter.com/fried_brice/status/1232773993507147776][some folks would like it]], I just think that in Elm in particular the benefits overweight the negatives.
+1. Elm doesn't have [[https://en.wikipedia.org/wiki/Ad_hoc_polymorphism][ad hoc polymorphism]]. Unlike in Haskell and PureScript we can't make this data type member of class anyway.
+2. This definition doesn't come in base and therefore is hard to reuse in libraries - it would lock library users to some specific definition.
+3. Using alias doesn't require using library in order to consume the type - it's easy to bring it in later.
+4. ~elm-community/list-extra~ already provides ~uncons~ function which is a compatible constructor with this definition.
+
+That's not to say there won't be any benefits in having similar definition in language other than Elm.
+[[https://twitter.com/fried_brice/status/1232773993507147776][Some folks might pefer it]]. I think in case of Elm the case is even stronger.
+
+That's being said I'm well aware of downsides of this approach:
 
 1. Less semantically expressive constructor (in pattern matching)
 2. Potentially encouraging even more fragmentation in implementations (or diversity, depends on where you stand).
 
-(All of) That being said -- I've actually implemented this library and it's already available to
-you to play with as [[https://package.elm-lang.org/packages/turboMaCk/non-empty-list-alias/latest/][turboMaCk/non-empty-list-alias]].
+The library also comes with [[https://en.wikipedia.org/wiki/Zipper_(data_structure)][zipper]] module.
+Unlike the ~NonEmpty~, [[https://package.elm-lang.org/packages/turboMaCk/non-empty-list-alias/latest/List-NonEmpty-Zipper][~Zipper~]] type is opaque.
+Zipper type contains private data field users of the library are not suppose to be
+exposed to and mess with. This type has to maintain internal invariant on its data
+and therefore opaque type is a right choice in this case.
 
-- [[https://package.elm-lang.org/packages/turboMaCk/non-empty-list-alias/latest/][Documentation]]
-- [[https://github.com/turboMaCk/non-empty-list-alias][Repository]]
+Both ~NonEmpty~ and ~Zipper~ comes with full featured implementations including but not limited to
+[[https://en.wikipedia.org/wiki/Functor][Fucntor]] [[https://en.wikipedia.org/wiki/Applicative_functor][Applicative Functor]] an [[https://en.wikipedia.org/wiki/Monad_(category_theory)][Comonad]] implementations.
+
+If you want to learn more there are some links:
+
+ - [[https://package.elm-lang.org/packages/turboMaCk/non-empty-list-alias/latest/][Documentation]]
+ - [[https://github.com/turboMaCk/non-empty-list-alias][Repository]]
 
 * Conclusion
 
-I hope I was somewhat able to explain motivation behind this design
-and perhaps even help to clear some intuition around different levels of power
-we have in our type systems. I know this topic sounds mostly banal but I strongly belive
-that solid understanding of basics goes a log way in understanding more advanced concepts
-and helps with API design a ton.
-
 I'm pretty sure there are and will always be some users who won't give up their semantically
-more expressive definition of non-empty-list constructor and I think that's fine as long
+more expressive definition of non-empty list constructor and I think that's fine as long
 as we all understand the trade-off. Luckily both alias to pair and custom ADTs
 are isomorphic so it's just matter of practicality and nothing more.
+
+Anonymous types do change the ergonomics of a language.
+We should always think about what is an appropriate level of openness or closeness
+when designing APIs.
