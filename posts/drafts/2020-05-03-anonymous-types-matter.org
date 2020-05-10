@@ -2,7 +2,7 @@
 title: Anonymous types matter
 subtitle: Anonymous type synonyms are great tool for opening your APIs.
 description: In typed FP we sometimes tend to overuse closed design with opaque data. I'll try to make my case that in some situations we should actually go in exact opposite direction.
-tags: functional-programming, elm, haskell, pure-script
+tags: functional-programming, elm, haskell, purescript
 ---
 
 So I recently released another Elm library. I wished to have library like this for a long
@@ -141,13 +141,15 @@ This is the same situation as with Haskell.
 *** PureScript
 
 PureScript is interesting as it does ship only with minimal language support
-but without standard library. This is a design decision which makes
-sense in wider context of PureScript's design but it also means that PureScript
-doesn't ship with support for tuples as a language.
-Tuples are provided by optional [[https://pursuit.purescript.org/packages/purescript-tuples/5.1.0][library]] instead.
+but without standard library. This design decision which makes
+sense in wider design context but it also means that PureScript
+doesn't contain support for tuples in core language.
+Tuples are provided by [[https://pursuit.purescript.org/packages/purescript-tuples/5.1.0][optional library]] instead.
 
+#+BEGIN_note
 I'm using [[https://github.com/purescript/spago][spago]] as a build tool for PS (which is sort of similar to [[https://docs.haskellstack.org][stack]] in Haskell world)
 as because we need to manage dependencies in this case.
+#+END_note
 
 #+BEGIN_SRC haskell
 module Tuples where
@@ -173,7 +175,7 @@ import Prelude
 Tuple String MyData
 #+END_SRC
 
-PureScript is clearly different. If we look into definition of
+If we look into definition of
 ~Tuple~, we can see it's good old custom product type:
 
 #+BEGIN_SRC haskell
@@ -188,21 +190,21 @@ myPair :: String /\ MyData
 myPair = "Foo" /\ MyData 42
 #+END_SRC
 
-In fact this way of defining tuples is pretty close to the mathematical definition.
+In fact this way of defining tuples is pretty close to [[https://en.wikipedia.org/wiki/Tuple][the mathematical definition]].
 
 Since tuples in PureScript are not first-class language construct, we definitely can't considered them as being anonymous.
 Anyway the PureScript implementation also nicely demonstrates how it
-is possible to sort of emulate absence of anonymous type within a laguage with parametric polymorphism.
+is possible to emulate absence of anonymous type within a laguage with parametric polymorphism.
 
 - Define parametric custom type (eg. ~Tuple a b~)
 - Provide general functions to work with this type (~fst~, ~snd~...)
-- Make sure everybody is using the same this definition of type (make library officially accepted)
+- Make sure everybody is using the same this definition of type (community standard)
 
 I also want to point out that absence of built-in tuples in not much of a problem in PureScript in practice.
 PureScript's product types are all about records as we will see later.
-I personally still think though that it's good to have first class tuples as in some cases the positional
-nature of Tuples works better and named keys are just unnecessary noise. That's being said in most cases
-however the record has much better ergonomics than tuple has.
+I personally still think that it's good to have first class tuples as in some cases the positional
+nature of tuples works better than named keys of records. That's being said in most cases
+however records are nicer to work with.
 
 ** Records
 
@@ -212,7 +214,7 @@ Record is another example of product type which we might want to make anonymous.
 
 The lack of anonymous records [[https://duckduckgo.com/?t=ffab&q=haskell+records][is causing some headaches in Haskell for ages]]. Some folks
 went even as far as solving at least parts which are solvable in user space
-(without compiler changes) in projects like [[https://hackage.haskell.org/package/record][Record]] or [[https://hackage.haskell.org/package/superrecord][superrecord]].
+(without compiler changes) in projects like [[https://hackage.haskell.org/package/record][record]] or [[https://hackage.haskell.org/package/superrecord][superrecord]].
 
 Lets have a look on this idiomatic Haskell code:
 
@@ -234,12 +236,14 @@ Records.hs:2:26: error:
 Failed, no modules loaded.
 #+END_SRC
 
-This is because Haskell records are just regular custom product types like ~data User = User String Int~.
-Record syntax just provides implicit setter ad getter functions.
-This is also why the keyword for record declaration is ~data~ -- these are new data types, not an type synonym.
-For this reason Haskell record definitions also contain explicit constructor.
+Haskell records are just regular custom product types like ~data User = User String Int~.
+This is why record declaration is using ~data~ -- records are new data types, not an type synonym.
+Record syntax just provides implicit setter and getter functions.
+And on these functions the ~multiple declarations~ problem happens -- Haskell wants to generate two ~name~
+accessors for each record and those two collide on multiple declaration.
 
-To fix this problem we need to ~:set -XDuplicateRecordFields~. Anyway if we do so we loose ability to use getter and setter:
+To fix this problem we need to ~:set -XDuplicateRecordFields~.
+Anyway if we do so we loose ability to use getter and setter:
 
 #+BEGIN_SRC shell
 λ :t name
@@ -251,7 +255,7 @@ To fix this problem we need to ~:set -XDuplicateRecordFields~. Anyway if we do s
            or the field ‘name’, defined at Records.hs:1:20
 #+END_SRC
 
-So in order to make records usable one needs to allow other extension like ~-XRecordWildCards~.
+So in order to make records usable we need to allow other extension like ~-XRecordWildCards~.
 
 Since there are so many extensions and recommended practices around Haskell's records
 I can't possibly talk or even list all of them. Feel free to refer to these articles for more information though:
@@ -276,7 +280,7 @@ type alias Project = { name : String, description : String }
 #+END_SRC
 
 As you can see these records are defined as synonyms (aliases) to "already existing" record type.
-We in fact don't even need to declare them at all:
+We in fact don't even need to declare these aliases at all:
 
 #+BEGIN_SRC elm
 > foo = { asdf = "asdf", lkj = -1 }
@@ -284,7 +288,7 @@ We in fact don't even need to declare them at all:
     : { asdf : String, lkj : number }
 #+END_SRC
 
-If we define record alias though we get the value constructor for free:
+If we define record alias though, we get the value constructor for free:
 
 #+BEGIN_SRC elm
 > User
@@ -298,11 +302,11 @@ Further more, Elm gives us polymorphic getters (and setters):
 <function> : { b | name : a } -> a
 #+END_SRC
 
-~.name~ as well as ~foo.name~ will work with any records which has name filed what ever its type might be.
-This is much like a ~fst~ or ~Tupple.first~ function but it also uses named rather than positional keys!
+~.name~ as well as ~foo.name~ will work with any records which has name field what ever its type might be.
+This is much like a ~fst~ or ~Tupple.first~ function but it also uses named rather than positional keys.
 
 Elm's records are anonymous. They are also so called /extensible records/.
-[[https://elm.christmas/2018/19][You won't belive what these records can do!]] article by Jonas Berdal provides more details about this feature.
+[[https://elm.christmas/2018/19][You won't belive what these records can do!]] article by Jonas Berdal goes a bit more deeper into this.
 
 *** PureScript
 
@@ -317,7 +321,7 @@ type Project = { name :: String, description :: String }
 #+END_SRC
 
 Unlike with Haskell (without language extension) and like with Elm, this code is perfectly fine.
-Also you can see that records are declared as synonyms similarly to Elm.
+Also you can see that records are declared as synonyms (similarly to Elm).
 
 We of course don't need to declare synonyms unless we want to:
 
@@ -329,7 +333,7 @@ We of course don't need to declare synonyms unless we want to:
 }
 #+END_SRC
 
-In PureScript aliases won't give us function constructors (~User : String -> Int -> User~) like they did in Elm.
+In PureScript, aliases won't give us function constructors (~User : String -> Int -> User~) like they did in Elm.
 Instead, there is special syntax for declaring value constructor we can use even without declaration of synonym:
 
 #+BEGIN_SRC haskell
@@ -349,7 +353,7 @@ We also don't get ~.name~ style getters so we need to use ~{record}.{field}~ syn
 "Jane Doe"
 #+END_SRC
 
-PureScript records has even more power provided by row polymorphism abilities.
+PureScript records has even more powers provided by [[https://en.wikipedia.org/wiki/Row_polymorphism][row polymorphism]] abilities of the language.
 You can check [[https://qiita.com/kimagure/items/ca229cb4ba76db0c24a8][Making Diffs of differently-typed Records in PureScript]] article by Justin Woo
 if you're keen to learn more.
 
@@ -380,25 +384,21 @@ with right properties.
 
 Depending on the nature of the API, different level of openness/closeness might be appropriate.
 
-*** Opaque Types
+The tree languages we've look into while being generally fairly similar has some obvious differences.
+This is why often the best API for a problem might look a bit different across the three.
 
-Construction a Deconstruction and therefore all implementation details are available to
-just a single (or limited number of) module. Useful for hiding details and internal invariants.
+For example ~uncons~ function works differently. It's desirable to produce anonymous product
+but it also seems to be preferable to use positional Tuple over record (at least Elm which has choice
+uses tuple).
 
-*** Custom ADT
 
-Constructors are exposed but working with type requires importing the module and using its
-definition (or synonyms for that definition). Useful for capturing semantics etc.
+ - Elm (elm-community/list-extra): ~uncons : List a -> Maybe ( a, List a )~
+ - PureScript (purescript-lists) : ~uncons :: forall a. List a -> Maybe { head :: a, tail :: List a }~
+ - Haskell ~uncons :: [a] -> Maybe (a, [a])~
 
-*** Common ADT
-
-Same as [[#custom-adt][Custom ADT]] but expected to be available for variety of packages. This is especially
-true about ADTs provided by standard library of official packages.
-
-*** Anonymous Type
-
-Synonyms on these doesn't require knowledge of the type definition or particular implementation.
-Declared by structure, not by place of definition.
+An example where both Elm and PureScript might favor record while Haskell often are arguments to
+a functions where named key might bring more semantic clarity into the API. For instance with
+arguments for networking functions.
 
 * Non-Empty List as Anonymous Type
 
