@@ -451,4 +451,4 @@ I'm personally often willing to sacrifice some expressiveness to make APIs a bit
 
 Anonymous types do change the ergonomics of a language and APIs which exploit their power.
 For what it's worth, I think that we should always think about what is an appropriate level of openness or closeness
-when designing APIs.
+when designing APIs. Especially if language which offers bunch of them.
