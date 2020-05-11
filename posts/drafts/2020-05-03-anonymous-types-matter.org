@@ -237,13 +237,13 @@ Failed, no modules loaded.
 #+END_SRC
 
 Haskell records are just regular custom product types like ~data User = User String Int~.
-This is why record declaration is using ~data~ -- records are new data types, not an type synonym.
-Record syntax just provides implicit setter and getter functions.
-And on these functions the ~multiple declarations~ problem happens -- Haskell wants to generate two ~name~
-accessors for each record and those two collide on multiple declaration.
+This is why record declaration is using ~data~. Records are new data types not type synonyms.
+Record syntax just provides extra getter and setter functions.
+These functions are where ~multiple declarations~ problem happens -- Haskell wants to generate two ~name~
+accessors and these collide.
 
 To fix this problem we need to ~:set -XDuplicateRecordFields~.
-Anyway if we do so we loose ability to use getter and setter:
+Anyway if we do so we loose ability to use getter and setter functions:
 
 #+BEGIN_SRC shell
 λ :t name
@@ -270,7 +270,7 @@ that of Haskell's relation to [[https://www.microsoft.com/en-us/research/people/
 
 *** Elm
 
-In elm on the other hand we can easily do this:
+In Elm, on the other hand, we can easily do this.
 
 #+BEGIN_SRC elm
 module Records exposing (..)
@@ -288,7 +288,7 @@ We in fact don't even need to declare these aliases at all:
     : { asdf : String, lkj : number }
 #+END_SRC
 
-If we define record alias though, we get the value constructor for free:
+If we define record alias though, we get a value constructor for free:
 
 #+BEGIN_SRC elm
 > User
@@ -302,16 +302,18 @@ Further more, Elm gives us polymorphic getters (and setters):
 <function> : { b | name : a } -> a
 #+END_SRC
 
-~.name~ as well as ~foo.name~ will work with any records which has name field what ever its type might be.
-This is much like a ~fst~ or ~Tupple.first~ function but it also uses named rather than positional keys.
+~.name~ as well as ~{record}.name~ will work with any records which has name field what ever its type might be.
+This is much like a ~fst~ or ~Tupple.first~ functions but it also with named rather than positional keys.
+Don't confuse this with maps with string based keys (so common in dynamic languages). This is nothing
+like map with string because records have known shape. Querying record for key it doesn't have is a type error.
 
-Elm's records are anonymous. They are also so called /extensible records/.
+Elm's records are anonymous. They are also so called [[https://www.microsoft.com/en-us/research/publication/extensible-records-with-scoped-labels/][extensible records]].
 [[https://elm.christmas/2018/19][You won't belive what these records can do!]] article by Jonas Berdal goes a bit more deeper into this.
 
 *** PureScript
 
 I already said that records are a big deal in PureScript so let's just dive right into it.
-This is the idiomatic declaration of Record type.
+This is the idiomatic declaration of specific record type.
 
 #+BEGIN_SRC haskell
 module Records where
@@ -320,10 +322,10 @@ type User = { name :: String, age :: Int }
 type Project = { name :: String, description :: String }
 #+END_SRC
 
-Unlike with Haskell (without language extension) and like with Elm, this code is perfectly fine.
-Also you can see that records are declared as synonyms (similarly to Elm).
+Unlike Haskell (without language extension) and like Elm, this code is perfectly fine.
+Also you can see that records declaration uses keyword for synonym (similarly to Elm).
 
-We of course don't need to declare synonyms unless we want to:
+We, of course, don't need to declare synonyms unless we want to:
 
 #+BEGIN_SRC haskell
 > foo = { asdf : "asdf", lkj : -1 }
@@ -375,20 +377,20 @@ This goes back to the open/closed principles [[/posts/2019-08-14-avoiding-patter
 In all three languages we have whole spectrum of features which help to craft APIs
 with right properties.
 
-| Type           | Open/Closed     | Description                                                          |
-|----------------+-----------------+----------------------------------------------------------------------|
-| Opaque type    | strictly closed | Type can't be constructed and deconstructed outside of module        |
-| Custom ADT     | closed          | Type is defined in specific module we require to understand the type |
-| Common ADT     | almost opened   | Like custom ADT by known expected to universally available           |
-| Anonymous type | opened          | Completely independent of it's definition, compatible by structure   |
+| Type           | Opened/Closed   | Description                                                                 |
+|----------------+-----------------+-----------------------------------------------------------------------------|
+| Opaque type    | strictly closed | Type can't be constructed and deconstructed outside of module               |
+| Custom ADT     | closed          | Type is defined in specific module which id required for working with type  |
+| Common ADT     | almost opened   | Like custom ADT just expected to universally available (part of stdlib etc) |
+| Anonymous type | opened          | Completely independent of it's definition, compatible by structure          |
 
 Depending on the nature of the API, different level of openness/closeness might be appropriate.
 
-The tree languages we've look into while being generally fairly similar has some obvious differences.
+The three languages we've look into while being generally fairly similar has some obvious differences.
 This is why often the best API for a problem might look a bit different across the three.
 
-For example ~uncons~ function works differently. It's desirable to produce anonymous product
-but it also seems to be preferable to use positional Tuple over record (at least Elm which has choice
+For example ~uncons~ function has different API in PureScript because it's desirable to return anonymous product type.
+It also seems to be preferable to use positional Tuple over record is language has anonymous tuple (at least Elm which has choice
 uses tuple).
 
 
@@ -396,44 +398,43 @@ uses tuple).
  - PureScript (purescript-lists) : ~uncons :: forall a. List a -> Maybe { head :: a, tail :: List a }~
  - Haskell ~uncons :: [a] -> Maybe (a, [a])~
 
-An example where both Elm and PureScript might favor record while Haskell often are arguments to
-a functions with many arguments. For these records can work as substitution for named arguments (which OCaml has but Haskell does not).
+An example where both Elm and PureScript might favor record (and Haskell is likely using just multiple arguments) is in
+functions with a bit more complicated API. In these cases, records can work as substitution for named arguments (which Haskell does not, but OCaml does).
 Using record with named fields brings additional semantic clarity, making it easier to understand the API.
-For instance with arguments for networking functions.
+Example might be function that performs HTTP request.
 
 * Non-Empty List as Synonym
 
 About a week ago I've published [[https://package.elm-lang.org/packages/turboMaCk/non-empty-list-alias/latest/][non-empty-list-alias library]] for Elm.
 In my opinion there are several benefits of defining non-empty list
-in terms of ~(a, List a)~ especially in Elm.
+in terms of ~(a, List a)~. Especially in Elm.
 
-It's common to define non empty list type as ~type NonEmpty a = Cons a (List a)~
-and this several libraries that does this already exist.
-This is also quite close to definition of [[https://hackage.haskell.org/package/base-4.14.0.0/docs/Data-List-NonEmpty.html#g:1][Data.List.NonEmpty]] in Haskell's base.
+Currently it's common to define non-empty list as custom ~type NonEmpty a = Cons a (List a)~.
+This is what all existing libraries do.
+It is also how [[https://hackage.haskell.org/package/base-4.14.0.0/docs/Data-List-NonEmpty.html#g:1][Data.List.NonEmpty]] in Haskell's base is defined.
 
-I think synonym definition is especially good suited in Elm because:
+I think synonym definition is especially well suited in Elm because:
 
-1. Elm doesn't have [[https://en.wikipedia.org/wiki/Ad_hoc_polymorphism][ad hoc polymorphism]]. Unlike in Haskell and PureScript we can't make this data type member of class anyway.
-2. This definition doesn't come in base and therefore is hard to reuse in libraries - it would lock library users to some specific definition.
-3. Using alias doesn't require using library in order to consume the type - it's easy to bring it in later.
-4. ~elm-community/list-extra~ already provides ~uncons~ function which is a compatible constructor with this definition.
+1. Elm doesn't have [[https://en.wikipedia.org/wiki/Ad_hoc_polymorphism][ad hoc polymorphism]] -- Unlike in Haskell and PureScript, we can't make non empty instance of any type-class.
+2. elm/core doesn't come with definition of NonEmpty -- There is no single implementation of this type everyone is expected to use.
+3. It's easy enough to work directly with tuple -- It's virtually free to opt in and out of such library.
+4. ~elm-community/list-extra~ already provides ~uncons~ -- this function is a compatible constructor with this definition.
 
-That's not to say there won't be any benefits in having similar definition in language other than Elm.
-[[https://twitter.com/fried_brice/status/1232773993507147776][Some folks might pefer it]]. I think in case of Elm the case is even stronger.
+That's not to say there wouldn't be any benefits in having similar definition in language like Haskell.
+[[https://twitter.com/fried_brice/status/1232773993507147776][There are folks who would prefer such definition]]. I think in case of Elm the case is even stronger.
 
-That's being said I'm well aware of downsides of this approach:
+That's being said, I'm well aware of downsides of this approach:
 
 1. Less semantically expressive constructor (in pattern matching)
 2. Potentially encouraging even more fragmentation in implementations (or diversity, depends on where you stand).
 
 The library also comes with [[https://en.wikipedia.org/wiki/Zipper_(data_structure)][zipper]] module.
 Unlike the ~NonEmpty~, [[https://package.elm-lang.org/packages/turboMaCk/non-empty-list-alias/latest/List-NonEmpty-Zipper][~Zipper~]] type is opaque.
-Zipper type contains private data field users of the library are not suppose to be
-exposed to and mess with. This type has to maintain internal invariant on its data
-and therefore opaque type is a right choice in this case.
+Zipper type contains private data field users are not suppose to be able to mess with --
+therefore opaque type is a right choice in this case.
 
 Both ~NonEmpty~ and ~Zipper~ comes with full featured implementations including but not limited to
-[[https://en.wikipedia.org/wiki/Functor][Fucntor]] [[https://en.wikipedia.org/wiki/Applicative_functor][Applicative Functor]] an [[https://en.wikipedia.org/wiki/Monad_(category_theory)][Comonad]] implementations.
+[[https://en.wikipedia.org/wiki/Functor][Fucntor]] [[https://en.wikipedia.org/wiki/Applicative_functor][Applicative Functor]] and [[https://en.wikipedia.org/wiki/Monad_(category_theory)][Comonad]] functions.
 
 If you want to learn more there are some links:
 
@@ -442,11 +443,12 @@ If you want to learn more there are some links:
 
 * Conclusion
 
-I'm pretty sure there are and will always be some users who won't give up their semantically
-more expressive definition of non-empty list constructor and I think that's fine as long
-as we all understand the trade-off. Luckily both alias to pair and custom ADTs
-are isomorphic so it's just matter of practicality and nothing more.
+I'm pretty sure there are and will always be some folks who won't like to give up semantically
+more expressive definition of custom constructors. And I think that's fine as long
+as we all understand the trade-off. Both alias to pair and custom ADTs
+are isomorphic anyway so it's just matter of practicality in the end.
+I'm personally often willing to sacrifice some expressiveness to make APIs a bit easier to work with myself.
 
-Anonymous types do change the ergonomics of a language.
-We should always think about what is an appropriate level of openness or closeness
+Anonymous types do change the ergonomics of a language and APIs which exploit their power.
+For what it's worth, I think that we should always think about what is an appropriate level of openness or closeness
 when designing APIs.
