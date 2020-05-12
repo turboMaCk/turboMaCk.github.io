@@ -1,7 +1,7 @@
 ---
 title: Anonymous types matter
-subtitle: Anonymous type synonyms are a great tool for opening your APIs.
-description: In typed FP we sometimes tend to overuse closed design with opaque data. I'll try to make my case that in some situations we should actually go in exact opposite direction.
+subtitle: Anonymous tuples and records for designing APIs compatible by a structure, not a construction.
+description: In typed FP, we sometimes tend to overuse closed designs with opaque data. In this post I aim to explain why it might be in some cases better chose an opposite design.
 tags: functional-programming, elm, haskell, purescript
 ---
 
@@ -19,7 +19,7 @@ with similar type system ML, Rust, Idris..) if that's your cup of tea.
 
 * What is an Anonymous Type?
 
-The term "/anonymous type/" is somewhat semi-technical. If you look up [[https://en.wikipedia.org/wiki/Anonymous_type][Wikipedia article]] you find
+The term "/anonymous type/" is somewhat semi-technical. If you look up [[https://en.wikipedia.org/wiki/Anonymous_type][the Wikipedia article]] you find
 some programming languages do include a feature named "/anonymous types/" though.
 So hopefully there are some similarities between these implementations.
 
@@ -28,16 +28,16 @@ Anonymous types are a feature of C# 3.0, Visual Basic .NET 9.0, Oxygene, Scala, 
 a set of properties into a single object without having to first explicitly define a type.
 #+END_QUOTE
 
-If you look closer into how these features work you would find out that it
+If you look closer into how these features work you find out that it
 essentially allows a programmer to construct ~record~ ~struct~ or ~object~ value (depending on language terminology and features)
 without need to declare the corresponding type first.
 
-For purposes of this post, actually I'm going to generalize the definition to include all [[https://en.wikipedia.org/wiki/Product_type][product types]]
+For purposes of this post, I'm actually going to generalize the definition to include all [[https://en.wikipedia.org/wiki/Product_type][product types]]
 to potentially satisfy (or not) the condition of being anonymous.
 In particular, I mean that traditional tuple types from Haskell or ML are also anonymous types.
 
 #+BEGIN_note
-If I would attempt to define what /Anonymous Type/ is it the definition would be something like this:
+If I should attempt to define what /Anonymous Type/ is, the definition would be something like this:
 
 *Anonymous type is a product type whose values can be constructed without an explicit type declaration*.
 Since all the information about the shape of product type can be inferred at the time of construction
@@ -46,7 +46,7 @@ This should also already suggest that anonymity is provided by the language itse
 
 This is not to be confused by type inference which is an ability to deduce the type of a value.
 However type inference still requires the type to be declared, it just doesn't require
-a declaration of type on a value. For instance in this example Elm code:
+a declaration of type on a value. For instance, in this example Elm code:
 
 #+BEGIN_SRC elm
 type Object = Earth | Mars | Moon | Sun
@@ -56,7 +56,7 @@ destination = Mars
 
 the type of ~destination~ is inferred as ~Object~ but the declaration of an ~Object~ type is required.
 
-If you want to dive into much more advanced topic of anonymous variants check
+If you want to dive into much more advanced topic of anonymous variants, check
 [[http://comonad.com/reader/2008/the-cofree-comonad-and-the-expression-problem/][The Cofree Comonad and the Expression Problem]] by Edward Kmett.
 #+END_note
 
@@ -64,9 +64,9 @@ If you want to dive into much more advanced topic of anonymous variants check
 
 I will be primarily talking about records and tuples as I don't want to attempt to solve [[https://en.wikipedia.org/wiki/Expression_problem][the expression problem]] here.
 Perhaps I should also mention that *I'm not going to talk about extensible records or row polymorphism.*
-This post it about plain simple boring records and tuples.
+This post is about plain simple boring records and tuples.
 
-Since I don't want to assume deep familiarity with all or even just a single language I'm going to mention I will use
+Since I don't want to assume deep familiarity with all, or even just a single language I'm going to mention, I will use
 simple code examples for demonstrations. I've chosen Haskell Elm and PureScript as these
 are good examples I'm familiar with myself.
 
@@ -140,7 +140,7 @@ This is the same situation as with Haskell.
 
 *** PureScript
 
-PureScript is interesting as it does ship only with minimal language support
+PureScript is interesting as it does ship only with minimal language support,
 but without the standard library. This design decision makes
 sense in a wider design context but it also means that PureScript
 doesn't contain support for tuples in the core language.
@@ -176,24 +176,24 @@ Tuple String MyData
 #+END_SRC
 
 If we look into the definition of
-~Tuple~, we can see it's good old custom product type:
+~Tuple~, we can see it's a good old custom product type:
 
 #+BEGIN_SRC haskell
 data Tuple a b = Tuple a b
 #+END_SRC
 
 ~Data.Tuple.Nested~ provides a bunch of aliases and type and value operator (~/\~) for convenience.
-When importing this module we can also define our pair as follows:
+When importing this module, we can also define our pair as follows:
 
 #+BEGIN_SRC haskell
 myPair :: String /\ MyData
 myPair = "Foo" /\ MyData 42
 #+END_SRC
 
-In fact this way of defining tuples is pretty close to [[https://en.wikipedia.org/wiki/Tuple][the mathematical definition]].
+In fact, this way of defining tuples is pretty close to [[https://en.wikipedia.org/wiki/Tuple][the mathematical definition]].
 
 Since tuples in PureScript are not first-class language construct, we definitely can't consider them as being anonymous.
-Anyway the PureScript implementation also nicely demonstrates how it
+Anyway, the PureScript implementation also nicely demonstrates how it
 is possible to emulate the absence of anonymous type within a language with parametric polymorphism.
 
 - Define parametric custom type (eg. ~Tuple a b~)
@@ -202,9 +202,9 @@ is possible to emulate the absence of anonymous type within a language with para
 
 I also want to point out that the absence of built-in tuples is not much of a problem in PureScript in practice.
 PureScript's product types are all about records as we will see later.
-I personally still think that it's good to have first-class tuples as in some cases the positional
-nature of tuples works better than named keys of records. That's being said in most cases
-however records are nicer to work with.
+I personally still think that it's good to have first-class tuples as in some cases, the positional
+nature of tuples works better than named keys of records. That being said, in most cases,
+however, records are nicer to work with.
 
 ** Records
 
@@ -216,7 +216,7 @@ The lack of anonymous records [[https://duckduckgo.com/?t=ffab&q=haskell+records
 went even as far as solving at least parts that are solvable in user space
 (without compiler changes) in projects like [[https://hackage.haskell.org/package/record][record]] or [[https://hackage.haskell.org/package/superrecord][superrecord]].
 
-Lets have a look on this idiomatic Haskell code:
+Lets have a look at this idiomatic Haskell code:
 
 #+BEGIN_SRC haskell
 data User = User { name :: String, age :: Int }
@@ -242,7 +242,7 @@ Record syntax just provides extra getter and setter functions.
 These functions are where ~multiple declarations~ problem happens -- Haskell wants to generate two ~name~
 accessors and these collide.
 
-To fix this problem we need to ~:set -XDuplicateRecordFields~.
+To fix this problem, we need to ~:set -XDuplicateRecordFields~.
 Anyway if we do so we lose the ability to use getter and setter functions:
 
 #+BEGIN_SRC shell
@@ -257,7 +257,7 @@ Anyway if we do so we lose the ability to use getter and setter functions:
 
 So in order to make records usable, we need to allow other extensions like ~-XRecordWildCards~.
 
-Since there are so many extensions and recommended practices around Haskell's records
+Since there are so many extensions and recommended practices around Haskell's records,
 I can't possibly talk or even list all of them. Feel free to refer to these articles for more information though:
 
 - 24 Days of GHC Extensions: [[https://ocharles.org.uk/blog/posts/2014-12-04-record-wildcards.html][Record Wildcards]] by Ollie Charles
@@ -279,7 +279,7 @@ type alias User = { name : String, age : Int }
 type alias Project = { name : String, description : String }
 #+END_SRC
 
-As you can see these records are defined as synonyms (aliases) to "already existing" record type.
+As you can see, these records are defined as synonyms (aliases) to "already existing" record type.
 We, in fact, don't even need to declare these aliases at all:
 
 #+BEGIN_SRC elm
@@ -308,11 +308,11 @@ Don't confuse this with maps with string based keys (so common in dynamic langua
 like map with string because records have known shape. Querying record for key it doesn't have is a type error.
 
 Elm's records are anonymous. They are also so-called [[https://www.microsoft.com/en-us/research/publication/extensible-records-with-scoped-labels/][extensible records]].
-[[https://elm.christmas/2018/19][You won't belive what these records can do!]] article by Jonas Berdal goes deeper into this.
+[[https://elm.christmas/2018/19][You won't believe what these records can do!]] article by Jonas Berdal goes deeper into this.
 
 *** PureScript
 
-I already said that records are a big deal in PureScript so let's just dive right into it.
+I already said that records are a big deal in PureScript, so let's just dive right into it.
 This is the idiomatic declaration of a specific record type.
 
 #+BEGIN_SRC haskell
@@ -323,7 +323,7 @@ type Project = { name :: String, description :: String }
 #+END_SRC
 
 Unlike Haskell (without language extension) and like Elm, this code is perfectly fine.
-Also you can see that records declaration uses keyword for a synonym (similar to Elm).
+Also, you can see that records declaration uses keyword for a synonym (similar to Elm).
 
 We, of course, don't need to declare synonyms unless we want to:
 
@@ -386,8 +386,8 @@ with the right properties.
 
 Depending on the nature of the API, different level of openness/closeness might be appropriate.
 
-The three languages we have looked into while being generally fairly similar have some obvious differences.
-This is why often the best API for a problem might look a bit different across the three.
+The three languages we have looked into, while being generally fairly similar, have some obvious differences.
+This is why the best API for a problem might often look a bit different across the three.
 
 For example, ~uncons~ function has different API in PureScript because it's desirable to return anonymous product type.
 It also seems to be preferable to use positional tuple over the record provided language does have anonymous tuple (at least Elm which has choice
@@ -405,7 +405,7 @@ An example might be a function that performs HTTP requests.
 
 * Non-Empty List as Synonym
 
-About a week ago I've published [[https://package.elm-lang.org/packages/turboMaCk/non-empty-list-alias/latest/][non-empty-list-alias library]] for Elm.
+About a week ago, I published [[https://package.elm-lang.org/packages/turboMaCk/non-empty-list-alias/latest/][non-empty-list-alias library]] for Elm.
 In my opinion, there are several benefits of defining non-empty list
 in terms of ~(a, List a)~. Especially in Elm.
 
@@ -421,9 +421,9 @@ I think synonym definition is especially well suited in Elm because:
 4. ~elm-community/list-extra~ already provides ~uncons~ -- this function is a compatible constructor with this definition.
 
 That's not to say there wouldn't be any benefits in having a similar definition in a language like Haskell.
-[[https://twitter.com/fried_brice/status/1232773993507147776][There are folks who would prefer such definition]]. I think in the case of Elm the case is even stronger.
+[[https://twitter.com/fried_brice/status/1232773993507147776][There are folks who would prefer such definition]]. I think in the case of Elm, the case is even stronger.
 
-That's being said, I'm well aware of downsides of this approach:
+That being said, I'm well aware of downsides of this approach:
 
 1. Less semantically expressive constructor (in pattern matching)
 2. Potentially encouraging even more fragmentation in implementations (or diversity, depends on where you stand).
@@ -433,10 +433,10 @@ Unlike the ~NonEmpty~, the [[https://package.elm-lang.org/packages/turboMaCk/non
 Zipper type contains private data field users are not supposed to be able to mess with --
 therefore the opaque type is the right choice in this case.
 
-Both ~NonEmpty~ and ~Zipper~ comes with full-featured implementations including but not limited to
+Both ~NonEmpty~ and ~Zipper~ modules come with full-featured implementations, including but not limited to
 [[https://en.wikipedia.org/wiki/Functor][Functor]] [[https://en.wikipedia.org/wiki/Applicative_functor][Applicative Functor]] and [[https://en.wikipedia.org/wiki/Monad_(category_theory)][Comonad]] functions.
 
-If you want to learn more there are some links:
+If you want to learn more, there are some links:
 
  - [[https://package.elm-lang.org/packages/turboMaCk/non-empty-list-alias/latest/][Documentation]]
  - [[https://github.com/turboMaCk/non-empty-list-alias][Repository]]
@@ -446,9 +446,9 @@ If you want to learn more there are some links:
 I'm pretty sure there are and will always be some folks who won't like to give up the semantically
 more expressive definition of custom constructors. And I think that's fine as long
 as we all understand the trade-off. Both alias to pair and custom ADTs
-are isomorphic anyway so it's just a matter of practicality in the end.
+are isomorphic anyway, so it's just a matter of practicality in the end.
 I'm personally often willing to sacrifice some expressiveness to make APIs a bit easier to work with myself.
 
 Anonymous types do change the ergonomics of a language and APIs which exploit their power.
 For what it's worth, I think that we should always think about what is an appropriate level of openness or closeness
-when designing APIs. Especially if language which offers bunch of them.
+when designing APIs. Especially if language offers a bunch of them.
