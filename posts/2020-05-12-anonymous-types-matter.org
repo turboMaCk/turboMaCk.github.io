@@ -3,6 +3,7 @@ title: Anonymous types matter
 subtitle: Anonymous tuples and records for designing APIs compatible by a structure, not a construction.
 description: In typed FP, we sometimes tend to overuse closed designs with opaque data. In this post I aim to explain why it might be in some cases better chose an opposite design.
 tags: functional-programming, elm, haskell, purescript
+reddit: r/elm/comments/givnx0/anonymous_types_matter_non_empty_list_as_a_list_a
 ---
 
 So I recently released another Elm library. I wished to have a library like this for a long
