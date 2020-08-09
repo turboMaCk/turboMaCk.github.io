@@ -373,7 +373,7 @@ Based on our findings we can compile this overview of three languages:
 * So Why Anonymous Types Matter?
 
 Anonymous types fill certain needs in software design pretty well.
-This goes back to the open/closed principles [[/posts/2019-08-14-avoiding-pattern-matching-refunctionalization.html][I wrote about some time ago]].
+This goes back to the open/closed principles [[./2019-08-14-avoiding-pattern-matching-refunctionalization.html][I wrote about some time ago]].
 
 In all three languages, we have the whole spectrum of features that help to craft APIs
 with the right properties.
