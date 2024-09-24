@@ -1,4 +1,4 @@
 { pkgs }:
 pkgs.mkShell {
-  buildInputs = [ pkgs.haskellPackages.site ];
+  buildInputs = [ pkgs.haskellPackages.site pkgs.git ];
 }

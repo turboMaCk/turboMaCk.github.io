@@ -46,7 +46,7 @@ published HTML must be in master branch. This is why my deployment flow involves
 
 
 ```
-$ nix-shell
+$ nix develop
 $ site build
 $ git branch -D master
 $ git checkout -b master
