@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="Description" content="My personal blog where I write mostly on topic of programming, especially function programming,
+                   system design and other things related to what I've learned, wanted to share or complain about
+                   within the discipline of software enginnering and informatics.">
+    <title>Org Mode in Hakyll</title>
+    <link rel="icon" type="image/png" href="../favicon.png" />
+    <link rel="stylesheet" type="text/css" href="../css/default.css" />
+  </head>
+  <body>
+    <header class="page-header">
+        <nav class="navigation">
+            
+                <a href="../">Home</a>
+                <a href="../archive.html" class="active">B\og</a>
+            
+        </nav>
+    </header>
+
+    <main class="main-container">
+      <div class="content">
+        <h1>
+          Org Mode in Hakyll
+          
+            <span class="subtitle">The Ultimate Toolkit for Publishing?</span>
+          
+        </h1>
+
+        
+<div class="tags">
+    Posted in: <a title="All pages tagged 'emacs'." href="../tags/emacs.html" rel="tag">emacs</a>, <a title="All pages tagged 'haskell'." href="../tags/haskell.html" rel="tag">haskell</a>.
+</div>
+
+<div class="info">
+    Posted on December 21, 2016
+    
+</div>
+
+<main id="content">
+    <p>As an <a href="https://gnu.org/software/emacs/">Emacs</a> user I’m really glad that I can benefit from full power of <a href="http://pandoc.org">Pandoc</a> thanks to <a href="https://jaspervdj.be/hakyll/">Hakyll</a> while creating this site.
+One of the Emacs’ beloved mode - <a href="http://orgmode.org/">org-mode</a> is supported by Pandoc therefore you can use it as markup language in Hakyll.
+Org-mode is really powerful. There is only problem with it - it’s almost exclusive for Emacs environment.
+<a href="https://gist.github.com/kinjo/509761">Github</a> maybe supports org preview but true power of org comes from editing experience in Emacs.
+Because Org is so exclusive to Emacs (written in E-Lisp) it’s hardly default markup even for many Emacs users simply
+because many of them has to to support all kinds of users not just ones who happen to use Emacs and org. Markdown is de-facto standard these days.
+This is for example why I’m personally also writing markdown daily. However this is quite different when it comes
+to project maintained only by one person - you. Org mode is simply so much better for taking notes, creating to-dos and much more
+that it become one of the most successful Emacs extension. Especially when it comes to <a href="https://en.wikipedia.org/wiki/Literate_programming">literate programming</a> which is what I mostly trying to do
+on this blog and more generally <a href="http://reproducibleresearch.net">reproducible research</a> which is movement I’m pretty big fan of.
+I’m also actively looking for interesting ideas and tools since I’ve discovered <a href="https://jupyter.org">Jubyter notebooks</a> about a year ago.</p>
+<p>To be honest since I’m mostly working on documents maintain by group of people (mostly colleagues) I’m not really an expert on org-mode.
+Anyway I was working on new blog post recently where I would really appreciate some of Org’s features.
+This is why I’ve recently added org support to this site willing to test Pandoc support.
+I’ve also decided to keep this document public on this site as a kind of reference which might be helpful to some folks.</p>
+<p>Actually this is the end of post itself. Everything below is just to test how Pandoc handles org files.</p>
+<h2 id="this-is-h1">This is H1</h2>
+<p>There is paragraph under h1</p>
+<h3 id="h2">H2</h3>
+<h4 id="h3">H3</h4>
+<h2 id="some-basic-test">Some basic test</h2>
+<p>This is <strong>bold</strong>, <em>italic</em>, <code class="verbatim">code</code>, <code>verbatim</code> and <del>strike</del> text.</p>
+<ul>
+<li>However <strong><em>bold and italic</em></strong> doesn’t play well when used together like in markdown.</li>
+<li>However <em><strong>bold and italic</strong></em> doesn’t play well when used together like in markdown.</li>
+</ul>
+<h2 id="list">List</h2>
+<ul>
+<li>Bullet</li>
+<li>Another bullet
+<ul>
+<li>child
+<ul>
+<li>deep</li>
+</ul></li>
+</ul></li>
+</ul>
+<h3 id="other-style">Other style</h3>
+<ul>
+<li>Bullet</li>
+<li>Another bullet
+<ul>
+<li>child
+<ul>
+<li>deep</li>
+</ul></li>
+</ul></li>
+</ul>
+<h3 id="other-style-1">Other style</h3>
+<ol type="1">
+<li>Bullet</li>
+<li>Another bullet
+<ol type="1">
+<li>child
+<ol type="1">
+<li>deep</li>
+</ol></li>
+</ol></li>
+</ol>
+<p>Style <code class="verbatim">*</code> isn’t supported.</p>
+<h2 id="links">Links</h2>
+<p><span class="spurious-link" target="link to org mode homepage"><em><a href="http://orgmode.org/">http://orgmode.org/</a></em></span></p>
+<h2 id="check-list-13-33">Check List [1/3] [33%]</h2>
+<ul class="task-list">
+<li><label><input type="checkbox" />Item</label></li>
+<li><label><input type="checkbox" />Item</label></li>
+<li><label><input type="checkbox" checked />Checked item</label></li>
+</ul>
+<p>Heading and has special class however <code class="verbatim">&lt;ul&gt;</code> and <code class="verbatim">&lt;li&gt;</code> are plain.</p>
+<h2 id="task-list">Task List</h2>
+<h3 id="some-to-do"><span class="todo TODO">TODO</span> some to-do</h3>
+<h3 id="done-to-do"><span class="done DONE">DONE</span> done to-do</h3>
+<p>Items are added with special class.</p>
+<h2 id="tables">Tables</h2>
+<table>
+<thead>
+<tr class="header">
+<th>number</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>looooong long name</td>
+</tr>
+<tr class="even">
+<td>5</td>
+<td>name</td>
+</tr>
+</tbody>
+</table>
+<p><code class="verbatim">&lt;tr&gt;</code> has <code class="verbatim">even</code> and <code class="verbatim">odd</code> classes.</p>
+<h2 id="source-code">Source Code</h2>
+<p><strong>Emacs Lisp:</strong></p>
+<div class="sourceCode" id="cb1" data-org-language="emacs-lisp"><pre class="sourceCode commonlisp"><code class="sourceCode commonlisp"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>(<span class="kw">defun</span><span class="fu"> negate </span>(x)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Negate the value of x.&quot;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    (<span class="op">-</span> x))</span></code></pre></div>
+<div class="sourceCode" id="cb2" data-org-language="emacs-lisp" data-results="output"><pre class="sourceCode commonlisp"><code class="sourceCode commonlisp"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>(<span class="kw">print</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    (negate <span class="dv">10</span>))</span></code></pre></div>
+<p>There are interesting classes like <code class="verbatim">sourceCode</code> and <code class="verbatim">example</code>.
+Also there html5 attributes prefixed with <code class="verbatim">rundoc-</code>.</p>
+<p><strong>Haskell:</strong></p>
+<div class="sourceCode" id="cb3" data-results="output"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ot">factorial ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>factorial <span class="dv">0</span> <span class="ot">=</span> <span class="dv">1</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>factorial n <span class="ot">=</span> n <span class="op">*</span> factorial (n <span class="op">-</span> <span class="dv">1</span>)</span></code></pre></div>
+<h2 id="latex">LaTeX</h2>
+<ul>
+<li><strong>Characters:</strong> α β → ↑ ∨ \and ⟹ π ∞</li>
+<li><strong>Inline Math:</strong> <span class="math inline"><em>f</em>(<em>x</em>) = <em>x</em><sup>2</sup></span></li>
+<li><strong>More complex:</strong> <span class="math inline">$\frac{x^2}{2}$</span></li>
+</ul>
+<p>LaTeX characters are wrapped in <code>&lt;em&gt;</code> and Math inside <code>&lt;span class="math inline"&gt;</code>.</p>
+<h3 id="ℋℯ𝓁𝓁ℴ">ℋℯ𝓁𝓁ℴ!</h3>
+<p><strong>NOTE:</strong> <em>There is standard LaTeX embeded above which is skipped during compilation to HTML.</em></p>
+<p><strong>This is using</strong> <span class="spurious-link" target="MathJax"><em><a href="https://www.mathjax.org/">https://www.mathjax.org/</a></em></span></p>
+<p><span class="math display">$$\sum_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6}$$</span></p>
+<h2 id="deadline">Deadline</h2>
+<h2 id="tagged">Tagged <span class="tag" data-tag-name="tag"><span class="smallcaps">tag</span></span></h2>
+<p>Tags are not visible in render</p>
+<h2 id="block-quote">Block Quote</h2>
+<blockquote>
+<p>Org mode is amazing. So is Hakyll &amp; Pandoc.</p>
+</blockquote>
+<h2 id="image">Image</h2>
+<p><a href="http://media.riffsy.com/images/f8534774b678ad1932b379a03460680b/raw">http://media.riffsy.com/images/f8534774b678ad1932b379a03460680b/raw</a></p>
+<p>Images has to have extension like:</p>
+<p><img src="../assets/reddit.png" /></p>
+<p>then it can be loaded even from other origin..</p>
+<p><img src="http://45.media.tumblr.com/270992d792c9899f79888a8ea6955ca5/tumblr_o0jt792qLd1r83d7lo6_540.gif" /></p>
+<h2 id="description-list">Description List</h2>
+<dl>
+<dt>Frodo</dt>
+<dd>
+The hobbit ringbearer
+</dd>
+<dt>Aragorn</dt>
+<dd>
+The human ranger, true kind of Gondor
+</dd>
+<dt>Gandalf</dt>
+<dd>
+The Grey Wizard
+</dd>
+</dl>
+<p>creddits to <span class="spurious-link" target="nihilmancer"><em><a href="https://www.reddit.com/user/nihilmancer">https://www.reddit.com/user/nihilmancer</a></em></span></p>
+<h2 id="footnotes">Footnotes</h2>
+<p>This has some<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> foot note.</p>
+<section id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1"><p>The link is: <a href="http://orgmode.org">http://orgmode.org</a><a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>
+</main>
+
+
+<div class="reddit-discussion" id="discussion">
+  <img src="../assets/reddit.png" alt="redit" class="reddit-logo">
+  Since I'm not a fan of disqus or any other commenting system there is no disscusion under this post.<br>
+  However I do like reddit as a platform so feel free to shout here:<br>
+  <a href="https://www.reddit.com/r/emacs/comments/5jjnri/org_mode_in_hakyll">r/emacs/comments/5jjnri/org_mode_in_hakyll</a>
+</div>
+
+
+      </div>
+      <footer id="footer">
+        <a href="https://github.com/turboMaCk/turboMaCk.github.io">Source</a> available under BSD-3-Clause.<br>
+        Content is published under <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.<br>
+        Proudly powered by <a href="http://jaspervdj.be/hakyll">Hakyll</a>; Theme by Marek Fajkus<br>
+        <a href="../rss.xml">RSS 2.0</a> compatible<br>
+        This site is not tracking you.
+      </footer>
+    </main>
+
+    <!-- MathJax is library for displaying math nicely -->
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML" async></script>
+  </body>
+</html>

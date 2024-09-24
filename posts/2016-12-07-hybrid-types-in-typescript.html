@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="Description" content="My personal blog where I write mostly on topic of programming, especially function programming,
+                   system design and other things related to what I've learned, wanted to share or complain about
+                   within the discipline of software enginnering and informatics.">
+    <title>Hybrid Types in TypeScript</title>
+    <link rel="icon" type="image/png" href="../favicon.png" />
+    <link rel="stylesheet" type="text/css" href="../css/default.css" />
+  </head>
+  <body>
+    <header class="page-header">
+        <nav class="navigation">
+            
+                <a href="../">Home</a>
+                <a href="../archive.html" class="active">B\og</a>
+            
+        </nav>
+    </header>
+
+    <main class="main-container">
+      <div class="content">
+        <h1>
+          Hybrid Types in TypeScript
+          
+            <span class="subtitle">Being Dynamic With Type Checker</span>
+          
+        </h1>
+
+        
+<div class="tags">
+    Posted in: <a title="All pages tagged 'typescript'." href="../tags/typescript.html" rel="tag">typescript</a>, <a title="All pages tagged 'javascript'." href="../tags/javascript.html" rel="tag">javascript</a>, <a title="All pages tagged 'd3.js'." href="../tags/d3.js.html" rel="tag">d3.js</a>.
+</div>
+
+<div class="info">
+    Posted on December  7, 2016
+    
+</div>
+
+<main id="content">
+    <p>Yesterday I’ve been refactoring one of our internal library in <a href="globalwebindex.net">GWI</a> from JavaScript to TypeScript.
+As a JavaScript veteran I like to use some edgy non-conventional &amp; pre-ES 2015 coding styles.
+I’m not using <code>prototype</code>, <code>class</code> or <code>this</code> much often.
+I’m rather using <a href="http://javascript.info/tutorial/factory-constructor-pattern">Factory Constructor Pattern</a>
+quite often as well as <a href="https://en.wikipedia.org/wiki/Higher-order_function">Higher Order Functions</a> for simulating <a href="https://en.wikipedia.org/wiki/Currying">currying</a>
+and like to with objects and play with scopes. Now you might think that this is silly. No one will understand my code and using truly
+private functions makes it harder to extend functionality. And you’re right:D Anyway I know that I can write more reliable
+code more quickly and from my experience when code is reliable enough not many people will need to change it.
+And when they do they are mostly experienced and are able to understand it.
+Also I like private functions. If you miss any functionality or abstraction it’s always good idea to add it directly to library
+or write your own than hack it. Anyway this article is not about these patterns
+and how to use them but rather about how it feels when you put <a href="https://www.typescriptlang.org">TypeScript</a> in the mix.
+If you want to learn more about these patterns <a href="https://duckduckgo.com/">DuckDuckGo</a> some other article.</p>
+<p>First let me explain one thing. I’m not writing TypeScript day to day. But when I do I’m mostly exploring edges of what it can do.
+I’m writing a lot of ES 2015 ECMAScript in work and <a href="elm-lang.org">Elm</a> for fun (what is slowly changing since we already shipped first
+feature written in Elm elm as part of our production <a href="ember.js">Ember.js</a> app).</p>
+<h2 id="problem">Problem</h2>
+<p>The idea is this. We have got our internal system for charts written in <a href="https://d3js.org/">D3.js</a>. Some parts of this are
+<a href="https://github.com/GlobalWebIndex/d3scription">open-sourced and available on GitHub</a>. In GWI we have got whole charts written in pure D3 that
+are sharing common interface so on application layer you’re basically just dynamically switching factory functions for charts based on
+based on chart type and everything works like a magic. However testing visualization layer is hard or even impossible. Wouldn’t it be
+a good idea to have at least type check for these interfaces? I think it would!</p>
+<p>For purpose of this tutorial I’ve picked one smaller part rather than whole chart.
+D3 itself comes with component called <a href="https://github.com/d3/d3/blob/master/API.md#axes-d3-axis">d3.svg.axis</a>.
+However sometimes it doesn’t fit your needs so you’ll need to implement your own solution.
+Lets say we want to implement custom axis which will create ticks based on data we have so for each data-point it will create a tick on axis.
+This is how we want to use our new component:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> axis <span class="op">=</span> <span class="fu">exactAxis</span>()</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">scale</span>(scale)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">data</span>(someData)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">tickFormat</span>(d <span class="kw">=&gt;</span> <span class="vs">`</span><span class="sc">${</span>d<span class="sc">}</span><span class="vs">`</span>)<span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>d3<span class="op">.</span><span class="fu">select</span>(<span class="st">'.axis-group'</span>)<span class="op">.</span><span class="fu">call</span>(axis)<span class="op">;</span></span></code></pre></div>
+<p>As you can see I’ve chosen <code>exactAxis</code> as a name for this component. It’s a <code>function</code>. However it returns some <code>Object</code>
+that has at least <code>scale</code>, <code>data</code> &amp; <code>tickFormat</code> methods. We’re using chaining so at least <code>scale</code> and <code>data</code> should return object they are defined on.
+Also on the last line we are using <a href="https://github.com/d3/d3-selection/blob/master/README.md#selection_call">d3.selection.call</a>
+which means that <code>axis</code> (thing returned by <code>tickFormat</code> call) needs to be <code>function</code>. This might mean that <code>tickFormat</code> returns some <code>function</code> instead of <code>object</code>
+but that is silly idea. Then you will need to always call <code>tickFormat</code> as last method.
+That said I think we can agree that:</p>
+<ul>
+<li><code>exactAxis()</code> returns <code>function</code> (and <strong>functions are Objects in JavaScript</strong>) with all methods defined.</li>
+<li>Each method will return object it’s called on (so we can chain method calls).</li>
+</ul>
+<h2 id="interface">Interface</h2>
+<p>Now we know what we need so lets define interface for out <code>exactAxis</code> function.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> <span class="op">*</span> <span class="im">as</span> d3 <span class="im">from</span> <span class="st">'d3'</span><span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> TickFormat <span class="kw">extends</span> <span class="bu">Function</span> {</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    (any) <span class="op">:</span> string<span class="op">;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> ExactAxis <span class="kw">extends</span> <span class="bu">Function</span> {</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    (<span class="dt">g</span> <span class="op">:</span> d3<span class="op">.</span><span class="at">Selection</span><span class="op">&lt;</span>any<span class="op">&gt;</span>) <span class="op">:</span> <span class="kw">void</span><span class="op">;</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale</span>(<span class="dt">scale</span> <span class="op">:</span> d3<span class="op">.</span><span class="at">scale</span><span class="op">.</span><span class="at">Ordinal</span><span class="op">&lt;</span>any<span class="op">,</span> any<span class="op">&gt;</span>) <span class="op">:</span> ExactAxis<span class="op">;</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">data</span>(<span class="dt">data</span> <span class="op">:</span> any[]) <span class="op">:</span> ExactAxis<span class="op">;</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tickFormat</span>(<span class="dt">fc</span> <span class="op">:</span> TickFormat) <span class="op">:</span> ExactAxis<span class="op">;</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>As you can see there are some <code>any</code> used.
+Maybe it’s good idea to solve this using <a href="https://www.typescriptlang.org/docs/handbook/generics.html">Generics</a>.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> <span class="op">*</span> <span class="im">as</span> d3 <span class="im">from</span> <span class="st">'d3'</span><span class="op">;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> TickFormat<span class="op">&lt;</span>T<span class="op">&gt;</span> <span class="kw">extends</span> <span class="bu">Function</span> {</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    (<span class="dt">data</span> <span class="op">:</span> T) <span class="op">:</span> string<span class="op">;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> ExactAxis<span class="op">&lt;</span>T<span class="op">&gt;</span> <span class="kw">extends</span> <span class="bu">Function</span> {</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    (<span class="dt">g</span> <span class="op">:</span> d3<span class="op">.</span><span class="at">Selection</span><span class="op">&lt;</span>any<span class="op">&gt;</span>) <span class="op">:</span> <span class="kw">void</span><span class="op">;</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale</span>(<span class="dt">scale</span> <span class="op">:</span> d3<span class="op">.</span><span class="at">scale</span><span class="op">.</span><span class="at">Ordinal</span><span class="op">&lt;</span>any<span class="op">,</span> any<span class="op">&gt;</span>) <span class="op">:</span> ExactAxis<span class="op">&lt;</span>T<span class="op">&gt;;</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">data</span>(<span class="dt">data</span> <span class="op">:</span> T[]) <span class="op">:</span> ExactAxis<span class="op">&lt;</span>T<span class="op">&gt;;</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tickFormat</span>(<span class="dt">fc</span> <span class="op">:</span> TickFormat<span class="op">&lt;</span>T<span class="op">&gt;</span>) <span class="op">:</span> ExactAxis<span class="op">&lt;</span>T<span class="op">&gt;;</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>OK this is better. Now it’s obvious that we are passing some data around.</p>
+<p>There are still some <code>any</code> used for d3 parts but I think we can leave it.</p>
+<h2 id="so-called-hybrid-types-in-ts">So Called Hybrid Types in TS</h2>
+<p>Now we can actually start implementing our axis component. This was the part I was not familiar till yesterday.
+I was actually asking some friends who work with typescript daily how an interface like this can be implemented in typescript
+but unluckily no one knew. I knew how this can be done in JS but that implementation did not satisfy tsc (compiler).
+Than as all SW engineers I’ve turned my last hope to <a href="https://www.typescriptlang.org/docs/handbook/interfaces.html">documentation</a>
+and found part about <a href="https://www.typescriptlang.org/docs/handbook/interfaces.html#hybrid-types">Hybrid Types</a>.</p>
+<blockquote>
+<p>As we mentioned earlier, interfaces can describe the rich types present in real world JavaScript.
+Because of JavaScript’s dynamic and flexible nature, you may occasionally encounter an object that works as a combination of some of the types described above.</p>
+</blockquote>
+<p>That’s exactly what I was looking for!</p>
+<p>Let’s have a look at how we minimal “implementation” that satisfy our interface:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> exactAxis<span class="op">&lt;</span>T<span class="op">&gt;</span>() <span class="op">:</span> ExactAxis<span class="op">&lt;</span>T<span class="op">&gt;</span> {</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> axis <span class="op">=</span> <span class="op">&lt;</span>ExactAxis<span class="op">&lt;</span>T<span class="op">&gt;&gt;</span><span class="kw">function</span>() {</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    axis<span class="op">.</span><span class="at">scale</span> <span class="op">=</span> <span class="kw">function</span>(<span class="dt">scale</span> <span class="op">:</span> d3<span class="op">.</span><span class="at">scale</span><span class="op">.</span><span class="at">Ordinal</span><span class="op">&lt;</span>any<span class="op">,</span> any<span class="op">&gt;</span>) <span class="op">:</span> ExactAxis<span class="op">&lt;</span>T<span class="op">&gt;</span> {</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> axis<span class="op">;</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    axis<span class="op">.</span><span class="at">data</span> <span class="op">=</span> <span class="kw">function</span>(<span class="dt">d</span> <span class="op">:</span> T[]) {</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> axis<span class="op">;</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    axis<span class="op">.</span><span class="at">tickFormat</span> <span class="op">=</span> <span class="kw">function</span>(<span class="dt">fc</span> <span class="op">:</span> TickFormat<span class="op">&lt;</span>T<span class="op">&gt;</span>) <span class="op">:</span> ExactAxis<span class="op">&lt;</span>T<span class="op">&gt;</span> {</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> axis<span class="op">;</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> axis<span class="op">;</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>That’s it! Actually this won’t do anything but it’s whole boiler plate we need.
+Now comes the easy part. We can just simply implement logic (and that’s always simpler than designing API, right?)</p>
+<p>So as a bonus - This is one possible full implementation:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> exactAxis<span class="op">&lt;</span>T<span class="op">&gt;</span>() <span class="op">:</span> ExactAxis<span class="op">&lt;</span>T<span class="op">&gt;</span> {</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Constants</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> <span class="dt">TEXT_DELTA</span> <span class="op">:</span> number <span class="op">=</span> <span class="dv">25</span><span class="op">;</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> <span class="dt">WITHOUT_TEXT_DELTA</span> <span class="op">:</span> number <span class="op">=</span> <span class="fl">12.5</span><span class="op">;</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Instance variables</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span> <span class="dt">data</span> <span class="op">:</span> T[] <span class="op">=</span> []<span class="op">;</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span> <span class="dt">tickFormat</span> <span class="op">:</span> TickFormat<span class="op">&lt;</span>T<span class="op">&gt;</span> <span class="op">=</span> (d) <span class="kw">=&gt;</span> <span class="vs">`</span><span class="sc">${</span>d<span class="sc">}</span><span class="vs">`</span><span class="op">;</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span> scale<span class="op">;</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Render</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> axis <span class="op">=</span> <span class="op">&lt;</span>ExactAxis<span class="op">&lt;</span>T<span class="op">&gt;&gt;</span><span class="kw">function</span>(g) {</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>        <span class="co">// D3 always returns array</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Lets render axis for every given group.</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>        g<span class="op">.</span><span class="fu">each</span>(<span class="kw">function</span>() {</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>            <span class="kw">const</span> <span class="dt">$el</span> <span class="op">:</span> d3<span class="op">.</span><span class="at">Selection</span><span class="op">&lt;</span>any<span class="op">&gt;</span> <span class="op">=</span> d3<span class="op">.</span><span class="fu">select</span>(<span class="kw">this</span>)<span class="op">;</span></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Prepare data for ticks</span></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>            <span class="kw">const</span> ticksData <span class="op">=</span> data<span class="op">.</span><span class="fu">sort</span>((a<span class="op">,</span> b) <span class="kw">=&gt;</span> <span class="bu">Number</span>(a) <span class="op">-</span> <span class="bu">Number</span>(b))</span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>                <span class="op">.</span><span class="fu">reduce</span>((acc<span class="op">,</span> d) <span class="kw">=&gt;</span> {</span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>                    <span class="kw">const</span> latestWithText <span class="op">=</span> <span class="fu">last</span>(acc<span class="op">.</span><span class="at">withText</span>)<span class="op">;</span></span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>                    <span class="co">// skip duplicates immediately</span></span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>                    <span class="cf">if</span> (latestWithText <span class="op">&amp;&amp;</span> latestWithText <span class="op">===</span> d) { <span class="cf">return</span> acc<span class="op">;</span> }</span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>                    <span class="co">// for first or not too close we add text one</span></span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a>                    <span class="cf">if</span> (<span class="op">!</span>latestWithText <span class="op">||</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">abs</span>(<span class="fu">scale</span>(latestWithText) <span class="op">-</span> <span class="fu">scale</span>(d)) <span class="op">&gt;=</span> TEXT_DELTA) {</span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>                        acc<span class="op">.</span><span class="at">withText</span><span class="op">.</span><span class="fu">push</span>(d)<span class="op">;</span></span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>                    } <span class="cf">else</span> {</span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>                        <span class="co">// we add tick without text</span></span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a>                        <span class="kw">const</span> latestWithoutText <span class="op">=</span> <span class="fu">last</span>(acc<span class="op">.</span><span class="at">withoutText</span>)<span class="op">;</span></span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a>                        <span class="co">// check for delta from latest with text</span></span>
+<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a>                        <span class="cf">if</span> (<span class="bu">Math</span><span class="op">.</span><span class="fu">abs</span>(<span class="fu">scale</span>(latestWithText) <span class="op">-</span> <span class="fu">scale</span>(d)) <span class="op">&gt;=</span> WITHOUT_TEXT_DELTA) {</span>
+<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-38"><a href="#cb5-38" aria-hidden="true" tabindex="-1"></a>                            <span class="co">// check for delta from latest without text</span></span>
+<span id="cb5-39"><a href="#cb5-39" aria-hidden="true" tabindex="-1"></a>                            <span class="cf">if</span> (<span class="op">!</span>latestWithoutText <span class="op">||</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">abs</span>(<span class="fu">scale</span>(latestWithoutText) <span class="op">-</span> <span class="fu">scale</span>(d)) <span class="op">&gt;=</span> WITHOUT_TEXT_DELTA) {</span>
+<span id="cb5-40"><a href="#cb5-40" aria-hidden="true" tabindex="-1"></a>                                acc<span class="op">.</span><span class="at">withoutText</span><span class="op">.</span><span class="fu">push</span>(d)<span class="op">;</span></span>
+<span id="cb5-41"><a href="#cb5-41" aria-hidden="true" tabindex="-1"></a>                            }</span>
+<span id="cb5-42"><a href="#cb5-42" aria-hidden="true" tabindex="-1"></a>                        }</span>
+<span id="cb5-43"><a href="#cb5-43" aria-hidden="true" tabindex="-1"></a>                    }</span>
+<span id="cb5-44"><a href="#cb5-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-45"><a href="#cb5-45" aria-hidden="true" tabindex="-1"></a>                    <span class="cf">return</span> acc<span class="op">;</span></span>
+<span id="cb5-46"><a href="#cb5-46" aria-hidden="true" tabindex="-1"></a>                }<span class="op">,</span> { <span class="dt">withText</span><span class="op">:</span> []<span class="op">,</span> <span class="dt">withoutText</span><span class="op">:</span> [] } )<span class="op">;</span></span>
+<span id="cb5-47"><a href="#cb5-47" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-48"><a href="#cb5-48" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Render</span></span>
+<span id="cb5-49"><a href="#cb5-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-50"><a href="#cb5-50" aria-hidden="true" tabindex="-1"></a>            <span class="co">// With text</span></span>
+<span id="cb5-51"><a href="#cb5-51" aria-hidden="true" tabindex="-1"></a>            <span class="kw">const</span> withText <span class="op">=</span> g<span class="op">.</span><span class="fu">selectAll</span>(<span class="st">'.tick.tick--with-text'</span>)<span class="op">.</span><span class="fu">data</span>(ticksData<span class="op">.</span><span class="at">withText</span>)<span class="op">;</span></span>
+<span id="cb5-52"><a href="#cb5-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-53"><a href="#cb5-53" aria-hidden="true" tabindex="-1"></a>            withText<span class="op">.</span><span class="fu">enter</span>()<span class="op">.</span><span class="fu">append</span>(<span class="st">'g'</span>)</span>
+<span id="cb5-54"><a href="#cb5-54" aria-hidden="true" tabindex="-1"></a>                <span class="op">.</span><span class="fu">attr</span>(<span class="st">'class'</span><span class="op">,</span> <span class="st">'tick tick--with-text'</span>)</span>
+<span id="cb5-55"><a href="#cb5-55" aria-hidden="true" tabindex="-1"></a>                <span class="op">.</span><span class="fu">append</span>(<span class="st">'text'</span>)</span>
+<span id="cb5-56"><a href="#cb5-56" aria-hidden="true" tabindex="-1"></a>                <span class="op">.</span><span class="fu">style</span>(<span class="st">'text-anchor'</span><span class="op">,</span> <span class="st">'middle'</span>)<span class="op">;</span></span>
+<span id="cb5-57"><a href="#cb5-57" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-58"><a href="#cb5-58" aria-hidden="true" tabindex="-1"></a>            withText<span class="op">.</span><span class="fu">transition</span>()</span>
+<span id="cb5-59"><a href="#cb5-59" aria-hidden="true" tabindex="-1"></a>                <span class="op">.</span><span class="fu">attr</span>(<span class="st">'transform'</span><span class="op">,</span> d <span class="kw">=&gt;</span> <span class="vs">`translate(</span><span class="sc">${</span><span class="fu">scale</span>(d)<span class="sc">}</span><span class="vs">, 15)`</span>)</span>
+<span id="cb5-60"><a href="#cb5-60" aria-hidden="true" tabindex="-1"></a>                <span class="op">.</span><span class="fu">select</span>(<span class="st">'text'</span>)</span>
+<span id="cb5-61"><a href="#cb5-61" aria-hidden="true" tabindex="-1"></a>                <span class="op">.</span><span class="fu">text</span>(tickFormat)<span class="op">;</span></span>
+<span id="cb5-62"><a href="#cb5-62" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-63"><a href="#cb5-63" aria-hidden="true" tabindex="-1"></a>            withText<span class="op">.</span><span class="fu">exit</span>()<span class="op">.</span><span class="fu">remove</span>()<span class="op">;</span></span>
+<span id="cb5-64"><a href="#cb5-64" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-65"><a href="#cb5-65" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Without text</span></span>
+<span id="cb5-66"><a href="#cb5-66" aria-hidden="true" tabindex="-1"></a>            <span class="kw">const</span> withoutText <span class="op">=</span> g<span class="op">.</span><span class="fu">selectAll</span>(<span class="st">'.tick.tick--without-text'</span>)<span class="op">.</span><span class="fu">data</span>(ticksData<span class="op">.</span><span class="at">withoutText</span>)<span class="op">;</span></span>
+<span id="cb5-67"><a href="#cb5-67" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-68"><a href="#cb5-68" aria-hidden="true" tabindex="-1"></a>            withoutText<span class="op">.</span><span class="fu">enter</span>()<span class="op">.</span><span class="fu">append</span>(<span class="st">'g'</span>)</span>
+<span id="cb5-69"><a href="#cb5-69" aria-hidden="true" tabindex="-1"></a>                <span class="op">.</span><span class="fu">attr</span>(<span class="st">'class'</span><span class="op">,</span> <span class="st">'tick tick--without-text'</span>)</span>
+<span id="cb5-70"><a href="#cb5-70" aria-hidden="true" tabindex="-1"></a>                <span class="op">.</span><span class="fu">append</span>(<span class="st">'line'</span>)</span>
+<span id="cb5-71"><a href="#cb5-71" aria-hidden="true" tabindex="-1"></a>                <span class="op">.</span><span class="fu">attr</span>(<span class="st">'x1'</span><span class="op">,</span> <span class="dv">0</span>)</span>
+<span id="cb5-72"><a href="#cb5-72" aria-hidden="true" tabindex="-1"></a>                <span class="op">.</span><span class="fu">attr</span>(<span class="st">'x2'</span><span class="op">,</span> <span class="dv">0</span>)</span>
+<span id="cb5-73"><a href="#cb5-73" aria-hidden="true" tabindex="-1"></a>                <span class="op">.</span><span class="fu">attr</span>(<span class="st">'y1'</span><span class="op">,</span> <span class="dv">0</span>)</span>
+<span id="cb5-74"><a href="#cb5-74" aria-hidden="true" tabindex="-1"></a>                <span class="op">.</span><span class="fu">attr</span>(<span class="st">'y2'</span><span class="op">,</span> <span class="dv">5</span>)<span class="op">;</span></span>
+<span id="cb5-75"><a href="#cb5-75" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-76"><a href="#cb5-76" aria-hidden="true" tabindex="-1"></a>            withoutText<span class="op">.</span><span class="fu">transition</span>()</span>
+<span id="cb5-77"><a href="#cb5-77" aria-hidden="true" tabindex="-1"></a>                <span class="op">.</span><span class="fu">attr</span>(<span class="st">'transform'</span><span class="op">,</span> d <span class="kw">=&gt;</span> <span class="vs">`trnaslate(</span><span class="sc">${</span><span class="fu">scale</span>(d)<span class="sc">}</span><span class="vs">, 0)`</span>)<span class="op">;</span></span>
+<span id="cb5-78"><a href="#cb5-78" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-79"><a href="#cb5-79" aria-hidden="true" tabindex="-1"></a>            withoutText<span class="op">.</span><span class="fu">exit</span>()<span class="op">.</span><span class="fu">remove</span>()<span class="op">;</span></span>
+<span id="cb5-80"><a href="#cb5-80" aria-hidden="true" tabindex="-1"></a>        })<span class="op">;</span></span>
+<span id="cb5-81"><a href="#cb5-81" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb5-82"><a href="#cb5-82" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-83"><a href="#cb5-83" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Public Interface</span></span>
+<span id="cb5-84"><a href="#cb5-84" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-85"><a href="#cb5-85" aria-hidden="true" tabindex="-1"></a>    axis<span class="op">.</span><span class="at">scale</span> <span class="op">=</span> <span class="kw">function</span>(<span class="dt">newScale</span> <span class="op">:</span> d3<span class="op">.</span><span class="at">scale</span><span class="op">.</span><span class="at">Ordinal</span><span class="op">&lt;</span>any<span class="op">,</span> any<span class="op">&gt;</span>) <span class="op">:</span> ExactAxis<span class="op">&lt;</span>T<span class="op">&gt;</span> {</span>
+<span id="cb5-86"><a href="#cb5-86" aria-hidden="true" tabindex="-1"></a>        scale <span class="op">=</span> newScale<span class="op">;</span></span>
+<span id="cb5-87"><a href="#cb5-87" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> axis<span class="op">;</span></span>
+<span id="cb5-88"><a href="#cb5-88" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb5-89"><a href="#cb5-89" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-90"><a href="#cb5-90" aria-hidden="true" tabindex="-1"></a>    axis<span class="op">.</span><span class="at">data</span> <span class="op">=</span> <span class="kw">function</span>(<span class="dt">d</span> <span class="op">:</span> T[]) {</span>
+<span id="cb5-91"><a href="#cb5-91" aria-hidden="true" tabindex="-1"></a>        data <span class="op">=</span> d<span class="op">;</span></span>
+<span id="cb5-92"><a href="#cb5-92" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> axis<span class="op">;</span></span>
+<span id="cb5-93"><a href="#cb5-93" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb5-94"><a href="#cb5-94" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-95"><a href="#cb5-95" aria-hidden="true" tabindex="-1"></a>    axis<span class="op">.</span><span class="at">tickFormat</span> <span class="op">=</span> <span class="kw">function</span>(<span class="dt">fc</span> <span class="op">:</span> TickFormat<span class="op">&lt;</span>T<span class="op">&gt;</span>) <span class="op">:</span> ExactAxis<span class="op">&lt;</span>T<span class="op">&gt;</span> {</span>
+<span id="cb5-96"><a href="#cb5-96" aria-hidden="true" tabindex="-1"></a>        tickFormat <span class="op">=</span> fc<span class="op">;</span></span>
+<span id="cb5-97"><a href="#cb5-97" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> axis<span class="op">;</span></span>
+<span id="cb5-98"><a href="#cb5-98" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb5-99"><a href="#cb5-99" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-100"><a href="#cb5-100" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> axis<span class="op">;</span></span>
+<span id="cb5-101"><a href="#cb5-101" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p><em>Note: If you read carefully you know that I’m not using <code>this</code> often. However for this example has one usage of <code>this</code>
+to get element in d3’s <code>each</code> method. It doesn’t make sense to go against library API.</em></p>
+<p><em>Note: This is really simplified implementation. Actual thing similar to this we have in our lib uses 3 types of ticks
+(long text, short text, no text). This means also different interface for <code>FormatValue</code> an we are also always adding
+line tick (without text) in middle of ticks with text. However I think this simpler example is better for purpose of this
+article.</em></p>
+<h2 id="dont-drink-too-much-kool-aid">Don’t Drink Too Much Kool-Aid</h2>
+<p>TypeScript maybe lets you express these kind of dynamic APIs but there is down side to it.
+If you remove implementation for any method compiler won’t complain even though your function
+does not return valid <code>ExactAxis&lt;T&gt;</code> implementation. However if you make mistake in method implementation (change its types) it will fail
+during compile time which seems as an improvement to pure JS version. That said if you want to play with something like this
+It’s usually good idea to <strong>always start with boilerplate with all methods defined</strong>.</p>
+</main>
+
+
+<div class="reddit-discussion" id="discussion">
+  <img src="../assets/reddit.png" alt="redit" class="reddit-logo">
+  Since I'm not a fan of disqus or any other commenting system there is no disscusion under this post.<br>
+  However I do like reddit as a platform so feel free to shout here:<br>
+  <a href="https://www.reddit.com/r/typescript/comments/5h15an/hybrid_types_in_typescript">r/typescript/comments/5h15an/hybrid_types_in_typescript</a>
+</div>
+
+
+      </div>
+      <footer id="footer">
+        <a href="https://github.com/turboMaCk/turboMaCk.github.io">Source</a> available under BSD-3-Clause.<br>
+        Content is published under <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.<br>
+        Proudly powered by <a href="http://jaspervdj.be/hakyll">Hakyll</a>; Theme by Marek Fajkus<br>
+        <a href="../rss.xml">RSS 2.0</a> compatible<br>
+        This site is not tracking you.
+      </footer>
+    </main>
+
+    <!-- MathJax is library for displaying math nicely -->
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML" async></script>
+  </body>
+</html>

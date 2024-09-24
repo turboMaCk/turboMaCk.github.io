@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="Description" content="My personal blog where I write mostly on topic of programming, especially function programming,
+                   system design and other things related to what I've learned, wanted to share or complain about
+                   within the discipline of software enginnering and informatics.">
+    <title>Elm 0.17 - Successful Upgrade of Real World App</title>
+    <link rel="icon" type="image/png" href="../favicon.png" />
+    <link rel="stylesheet" type="text/css" href="../css/default.css" />
+  </head>
+  <body>
+    <header class="page-header">
+        <nav class="navigation">
+            
+                <a href="../">Home</a>
+                <a href="../archive.html" class="active">B\og</a>
+            
+        </nav>
+    </header>
+
+    <main class="main-container">
+      <div class="content">
+        <h1>
+          Elm 0.17 - Successful Upgrade of Real World App
+          
+            <span class="subtitle">…and some soft of guide to all of this</span>
+          
+        </h1>
+
+        
+<div class="tags">
+    Posted in: <a title="All pages tagged 'elm'." href="../tags/elm.html" rel="tag">elm</a>, <a title="All pages tagged 'functional-programming'." href="../tags/functional-programming.html" rel="tag">functional-programming</a>.
+</div>
+
+<div class="info">
+    Posted on May 15, 2016
+    
+</div>
+
+<main id="content">
+    <p><em>Note: This is mirror of my <a href="https://medium.com/@turbo_MaCk/elm-0-17-successful-upgrade-of-real-world-app-and-some-soft-of-guide-to-all-of-this-cafd59dec56f">original</a> article published on medium.</em></p>
+<p>It has been few month since I’ve started learning <a href="http://elm-lang.org/">Elm programming language</a>.
+I’ve been walking around elm for quite a while without ever touching it.
+However not so long ago I’ve decided to learn some statically typed functional language started reading <a href="http://learnyouahaskell.com/">Learn You Haskell for Great Good!</a> and so I also finally put my hands on Elm.
+I’ve learned bit of syntax, core library, types, Signals, Effects, Mailboxes and <a href="https://github.com/evancz/elm-architecture-tutorial">Elm architecture</a>.
+It was quite interesting journey. Soon I’ll become wonder if I’ll be able to write some smaller project from end to start just using elm.
+Some kind of real world application to challenge myself and also this world of typed purity.
+I wanted it to talk to some JSON API and use Html. Github’s API seems to be good think to start with so I start writing github repository browser in elm.
+<a href="http://turbomack.github.io/elm-github-repos/">This is demo of app I’m talking about</a>.</p>
+<p>Just few days ago to me unexpected thing happens. <a href="http://elm-lang.org/blog/farewell-to-frp">Elm 0.17 release was announced!</a>
+I remember myslef reading that announcement and thinking “Omg, what’s going on?!”.
+From that moment Signals, Messages, Effects and Mailboxes are past of Elm. What should I think of it?</p>
+<blockquote class="twitter-tweet" data-lang="en">
+<p lang="en" dir="ltr">
+<a href="https://twitter.com/rabbitonweb"><span class="citation" data-cites="rabbitonweb">@rabbitonweb</span></a> I'm not sure yet. It's interesting and scary at the same time.
+</p>
+— Marek Fajkus (<span class="citation" data-cites="turbo_MaCk">@turbo_MaCk</span>) <a href="https://twitter.com/turbo_MaCk/status/730355729778020352">May 11, 2016</a>
+</blockquote>
+<script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+<p>This was really huge change in how everybody (including me) thinks about building web apps in Elm.
+We all know these kind of changes are really hard to bring in practice since you already have large codebase around your ecosystem.
+In that moment that app I wrote few month ago came to my mind.
+It looks like all <a href="http://package.elm-lang.org/">packages</a> it needs are ready for 0.17. Plan was made and yesterday I finally found some time and started with upgrade to 0.17.</p>
+<p>Upgrading is always painful. It really is. I’m working on pretty large Ember.js application at my company.
+Ember core team is pretty careful about their <a href="http://emberjs.com/deprecations/v1.x/">deprecation planing</a>. Anyway upgrading that app was (and is) a huge pain.
+It’s always complicated when you have tens of thousands of code lines and large test suits already written for legacy API.</p>
+<p>Such a big design change that Elm 0.17 brings to its ecosystem is something that can easily kill any JavaScript framework.
+Remember Angular 1.x vs 2.x? Express.js vs Koa.js?</p>
+<p>Luckily I have pretty small app which seems to be good candidate for going through this big upgrade process.
+I was not afraid of starting with upgrade since I was able to write whole app in just one day or so.
+Even if it turns out to be complete rewrite it can still be done over weekend.</p>
+<p>One thing is particularly hard when starting with any upgrade which is to find some pattern and split work into few smaller iterations where each has its own goal.
+Mostly you can’t rewrite whole app at once. This is no how you design it and it shouldn’t be the way how you refactor it as well.</p>
+<p>To be honest I was quite chaotic when I started with this upgrad
+but soon I realised some (or way how you can split upgrade into smaller iterations if you want) and this is why I’m sharing this story with you.
+No matter how big your project is I think you can apply these steps in order to make whole upgrade process of your elm 0.16 to 0.17 sooth and fun.</p>
+<p><strong>Note: This article is just about upgrading web app based on elm-html.
+I also have one project written with canvas backend (it’s kind of game) and other one as a library backed up just by elm-test.
+Anyway I will not focus on nether of these projects.</strong></p>
+<h2 id="lets-get-started">Lets get started</h2>
+<p>You can check or clone whole 0.16 version code from <a href="https://github.com/turboMaCk/elm-github-repos/tree/v0.16">Github under v0.16 tag</a>.
+With our legacy code and <a href="https://github.com/elm-lang/elm-platform/blob/master/upgrade-docs/0.17.md">Upgrading to 0.17 guide</a> opened we are ready to try what new Elm is about.</p>
+<h2 id="new-dependencies">New dependencies</h2>
+<p>This is pretty straight forward. We can almost copy/paste this part from upgrade guide so Lets open elm-package.json
+in your favorite <a href="https://www.gnu.org/software/emacs/">Emacs</a> and get it done.</p>
+<p><strong>Old version:</strong></p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;version&quot;</span><span class="fu">:</span> <span class="st">&quot;1.0.0&quot;</span><span class="fu">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;summary&quot;</span><span class="fu">:</span> <span class="st">&quot;helpful summary of your project, less than 80 characters&quot;</span><span class="fu">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;repository&quot;</span><span class="fu">:</span> <span class="st">&quot;https://github.com/user/project.git&quot;</span><span class="fu">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;license&quot;</span><span class="fu">:</span> <span class="st">&quot;BSD3&quot;</span><span class="fu">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;source-directories&quot;</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        <span class="st">&quot;.&quot;</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;exposed-modules&quot;</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;dependencies&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;deadfoxygrandpa/elm-test&quot;</span><span class="fu">:</span> <span class="st">&quot;3.1.0 &lt;= v &lt; 4.0.0&quot;</span><span class="fu">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;elm-lang/core&quot;</span><span class="fu">:</span> <span class="st">&quot;3.0.0 &lt;= v &lt; 4.0.0&quot;</span><span class="fu">,</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;evancz/elm-effects&quot;</span><span class="fu">:</span> <span class="st">&quot;2.0.1 &lt;= v &lt; 3.0.0&quot;</span><span class="fu">,</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;evancz/elm-html&quot;</span><span class="fu">:</span> <span class="st">&quot;4.0.2 &lt;= v &lt; 5.0.0&quot;</span><span class="fu">,</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;evancz/elm-http&quot;</span><span class="fu">:</span> <span class="st">&quot;3.0.0 &lt;= v &lt; 4.0.0&quot;</span><span class="fu">,</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;evancz/start-app&quot;</span><span class="fu">:</span> <span class="st">&quot;2.0.2 &lt;= v &lt; 3.0.0&quot;</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    <span class="fu">},</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;elm-version&quot;</span><span class="fu">:</span> <span class="st">&quot;0.16.0 &lt;= v &lt; 0.17.0&quot;</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p><strong>New version:</strong></p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;version&quot;</span><span class="fu">:</span> <span class="st">&quot;1.0.0&quot;</span><span class="fu">,</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;summary&quot;</span><span class="fu">:</span> <span class="st">&quot;helpful summary of your project, less than 80 characters&quot;</span><span class="fu">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;repository&quot;</span><span class="fu">:</span> <span class="st">&quot;https://github.com/user/project.git&quot;</span><span class="fu">,</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;license&quot;</span><span class="fu">:</span> <span class="st">&quot;BSD3&quot;</span><span class="fu">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;source-directories&quot;</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>        <span class="st">&quot;.&quot;</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;exposed-modules&quot;</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;dependencies&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;elm-lang/core&quot;</span><span class="fu">:</span> <span class="st">&quot;4.0.0 &lt;= v &lt; 5.0.0&quot;</span><span class="fu">,</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;elm-lang/html&quot;</span><span class="fu">:</span> <span class="st">&quot;1.0.0 &lt;= v &lt; 2.0.0&quot;</span><span class="fu">,</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;evancz/elm-http&quot;</span><span class="fu">:</span> <span class="st">&quot;3.0.1 &lt;= v &lt; 4.0.0&quot;</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="fu">},</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;elm-version&quot;</span><span class="fu">:</span> <span class="st">&quot;0.17.0 &lt;= v &lt; 0.18.0&quot;</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p><em>Note: As you can see I’m a little bit sloppy. Almost all meta is not filled out but since this was never published (and never will be)
+as package we just leave it as it is for now. One more thing to mention is that there is elm-test specified as dependency in legacy version
+but I actually never used it in this project. This is why it’s not in updated version.</em></p>
+<p>Then we run package install as usual:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> elm-package install</span></code></pre></div>
+<h2 id="module-declaration">Module Declaration</h2>
+<p>With new packages installed we can start rewriting application logic for new APIs.
+One smaller change is to update model declaration to new syntax.
+Replace:</p>
+<pre><code>module Repos where</code></pre>
+<p>with:</p>
+<pre><code>module Repos exposing (main)</code></pre>
+<p>We can also change imports to match new module structure.</p>
+<p>Here is complete old version and new equivalent:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Repos</span> <span class="kw">where</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">List</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Graphics.Element</span> exposing (..)</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Http</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Json.Decode</span> <span class="kw">as</span> <span class="dt">Json</span> exposing ((:=))</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Task</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Signal</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Html</span> exposing (..)</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Html.Attributes</span> exposing (..)</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Html.Events</span> <span class="kw">as</span> <span class="dt">Events</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Effects</span> exposing (<span class="dt">Effects</span>)</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">StartApp</span></span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Repos</span> exposing (main)</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">List</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Html</span> exposing (..)</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Html.App</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Html.Attributes</span> exposing (..)</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Html.Events</span> <span class="kw">as</span> <span class="dt">Events</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Http</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Json.Decode</span> <span class="kw">as</span> <span class="dt">Json</span> exposing ((:=))</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Task</span> exposing (..)</span></code></pre></div>
+<p>As you can see this app needs much less modules using 0.17.</p>
+<h2 id="views-startapp">Views + StartApp</h2>
+<p>Next step according to upgrade guide should be replacing Action with Msg.
+Anyway I’d like to start with views since my first goal is to be able to render initial state of application.
+We will go back to update function in a minute.</p>
+<p>What I did is to get rid off address passing from view, change type annotations and comment out all events.
+This is basically what needs to be done:</p>
+<p>replace:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>view <span class="op">:</span> <span class="dt">Signal.Address</span> <span class="dt">Action</span> <span class="ot">-&gt;</span> <span class="dt">Model</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>view address model <span class="ot">=</span></span></code></pre></div>
+<p>with:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>view <span class="op">:</span> <span class="dt">Model</span> <span class="ot">-&gt;</span> <span class="dt">Html</span> <span class="dt">Msg</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>view model <span class="ot">=</span></span></code></pre></div>
+<p>replace also all calls to “sub views”</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">div</span> [ <span class="kw">class</span> “app<span class="op">-</span>container” ]</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    [ headerView address model ]</span></code></pre></div>
+<p>with something like</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">div</span> [ <span class="kw">class</span> “app<span class="op">-</span>container” ]</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    [ headerView model ]</span></code></pre></div>
+<p>And finally comment out Events (we get back to them later):</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">div</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    [ <span class="kw">class</span> “repo<span class="op">-</span>main”</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    <span class="co">-- , Events.onClick address (SelectRepo repo)</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    ]</span></code></pre></div>
+<p>I also had custom Events for input and submit.
+In this step we can simply comment them out.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="op">-</span>— onInput <span class="op">:</span> <span class="dt">Signal.Address</span> <span class="dt">Action</span> <span class="ot">-&gt;</span> (<span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Action</span>) <span class="ot">-&gt;</span> <span class="dt">Attribute</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>—<span class="op">-</span> onInput address f <span class="ot">=</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    —<span class="op">-</span> Events.on “input” Events.targetValue (\v <span class="ot">-&gt;</span> Signal.message address (f v))</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>—<span class="op">-</span> oSubmit address value <span class="ot">=</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>    —<span class="op">-</span> Events.onWithOptions “submit”</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>        —<span class="op">-</span> { stopPropagation <span class="ot">=</span> <span class="dt">True</span>, preventDefault <span class="ot">=</span> <span class="dt">True</span> }</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>        —<span class="op">-</span> Json.value (\_ <span class="ot">-&gt;</span> Signal.message address (<span class="dt">FetchData</span> value))</span></code></pre></div>
+<p>If you now try to compile app you can still see compile error.
+<strong>We no longer need port in 0.17!</strong> Let’s remove it then!</p>
+<h3 id="fixing-glue">Fixing glue</h3>
+<p>Now we can see much more reasonable errors during compilation.
+Mostly legacy Effects stuff, missing Msg type and StartApp.
+Let’s fix this one by one.</p>
+<p>Firstly we can <strong>comment out all Effects stuff</strong> since our first goal is to render initial state.
+Also we need to get rid off all calls to these functions.
+For now lets replace every call in <strong>update</strong> with <strong>Cmd.none</strong> which is replacement for legacy <strong>Effects.none</strong>.</p>
+<p>Also it looks like we are now in update function part so lets change <strong>Action</strong> type to new <strong>Msg</strong> and refactor arguments according to guide.</p>
+<p>This is how update action looks like after these changes:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>update <span class="op">:</span> <span class="dt">Msg</span> <span class="ot">-&gt;</span> <span class="dt">Model</span> <span class="ot">-&gt;</span> (<span class="dt">Model</span>, <span class="dt">Cmd</span> <span class="dt">Msg</span>)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>update action model <span class="ot">=</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">case</span> action <span class="kw">of</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>        <span class="dt">NoOp</span> <span class="ot">-&gt;</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>            ( model, Cmd.none )</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">FetchData</span> name <span class="ot">-&gt;</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>        ( { model</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>            <span class="op">|</span> isLoading <span class="ot">=</span> <span class="dt">True</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>            , resultsFor <span class="ot">=</span> model<span class="op">.</span>userName }</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>            , Cmd.none )</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>            —<span class="op">-</span> , fetchDataAsEffects model<span class="op">.</span>userName )</span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>    <span class="dt">FetchDone</span> results <span class="ot">-&gt;</span></span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>        ( { model</span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>            <span class="op">|</span> repos <span class="ot">=</span> results</span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a>            , isLoading <span class="ot">=</span> <span class="dt">False</span></span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>            , alert <span class="ot">=</span> “” }</span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a>            , Cmd.none )</span></code></pre></div>
+<p><em>Note: This is just simplified version, but you get the idea…</em></p>
+<p>I my case I also need to change initialState since fetchData function is also called in this place.
+I’ll replace it with <strong>Cmd.none</strong> too.</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">init</span> <span class="op">:</span> ( <span class="dt">Model</span>, <span class="dt">Cmd</span> <span class="dt">Msg</span> )</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="fu">init</span> <span class="ot">=</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>    ( initialModel</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>    , Cmd.none )</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>    — , fetchDataAsEffects initialModel<span class="op">.</span>userName )</span></code></pre></div>
+<p>At last but not least we still did not change main function and legacy StartApp code.
+This can be copy/pasted from upgrade guide.
+Result looks like this:</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>main <span class="op">:</span> <span class="dt">Program</span> <span class="dt">Never</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>main <span class="ot">=</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>    Html.App.program</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>        { <span class="fu">init</span> <span class="ot">=</span> <span class="fu">init</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>        , update <span class="ot">=</span> update</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>        , view <span class="ot">=</span> view</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>        , subscriptions <span class="ot">=</span> \_ <span class="ot">-&gt;</span> Sub.none }</span></code></pre></div>
+<p><strong>App now renders without errors!</strong></p>
+<p>Ok. Looks like there is a lot of going on. <a href="https://gist.github.com/turboMaCk/98d2e40231c4033deca29c148d4684cc#file-repos-elm">This is</a> how whole code looks like after these changes.</p>
+<h2 id="goodbye-effects">Goodbye Effects!</h2>
+<p>So app is kind of working now. They said if it compile, than it works, right?
+Anyway it’s not much useful since it do nothing. I think it’s good time to have a look at Effects.
+With Http working we will be able to fetch first data which seems to be reasonable next stage.</p>
+<p>Looking at the <a href="http://package.elm-lang.org/packages/evancz/elm-http/3.0.1/">new api documentation</a> I think we will no longer need function for transforming Results to Action.
+I started by removing this one. Also one for creating Effects Action seems to be useless. Let’s remove this one too.</p>
+<p>Let’s have a look at fetchData function. Looks like we will need to change this one a little bit. Here is old version:</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>fetchData <span class="op">:</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Task.Task</span> a (<span class="dt">Result</span> <span class="dt">Http.Error</span> (<span class="dt">List</span> <span class="dt">Repo</span>))</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>fetchData name <span class="ot">=</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>    Http.get reposDecoder (getUrl name)</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">|&gt;</span> Task.toResult</span></code></pre></div>
+<p>new implementation looks like:</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>fetchData <span class="op">:</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Cmd</span> <span class="dt">Msg</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>fetchData name <span class="ot">=</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span> url <span class="ot">=</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>        getUrl name</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">in</span></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>        Task.perform <span class="dt">FetchFail</span> <span class="dt">FetchDone</span> (Http.get reposDecoder url)</span></code></pre></div>
+<p>As you can see we will need to change error handling logic.
+In my case I just added Type <strong>FetchFail</strong> to <strong>Msg</strong> union type.** Thir also means we need to add this branch to pattern matching inside update function.
+Lets replace old <strong>Error</strong> with new <strong>FetchFail</strong>. We can reuse old <strong>httpErrorToString</strong> function for transforming <strong>Error</strong> to <strong>String</strong>.</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Msg</span> <span class="ot">=</span> <span class="dt">NoOp</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> <span class="dt">FetchData</span> <span class="dt">String</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> <span class="dt">FetchDone</span> (<span class="dt">List</span> <span class="dt">Repo</span>)</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> <span class="dt">FetchFail</span> <span class="dt">Http.Error</span> <span class="co">-- THIS!!!!!!!!!!!</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> <span class="dt">NameChanged</span> <span class="dt">String</span></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> <span class="dt">SelectRepo</span> <span class="dt">Repo</span></span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> <span class="dt">ChangeSort</span> <span class="dt">SortBy</span></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>update <span class="op">:</span> <span class="dt">Msg</span> <span class="ot">-&gt;</span> <span class="dt">Model</span> <span class="ot">-&gt;</span> (<span class="dt">Model</span>, <span class="dt">Cmd</span> <span class="dt">Msg</span>)</span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>update msg model <span class="ot">=</span></span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>    <span class="kw">case</span> msg <span class="kw">of</span></span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>        <span class="dt">NoOp</span> <span class="ot">-&gt;</span></span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>            ( model, Cmd.none )</span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a>        <span class="dt">FetchData</span> name <span class="ot">-&gt;</span></span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a>            ( { model</span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a>                <span class="op">|</span> isLoading <span class="ot">=</span> <span class="dt">True</span></span>
+<span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a>                , resultsFor <span class="ot">=</span> model<span class="op">.</span>userName }</span>
+<span id="cb19-18"><a href="#cb19-18" aria-hidden="true" tabindex="-1"></a>                , Cmd.none )</span>
+<span id="cb19-19"><a href="#cb19-19" aria-hidden="true" tabindex="-1"></a>            — , fetchDataAsEffects model<span class="op">.</span>userName )</span>
+<span id="cb19-20"><a href="#cb19-20" aria-hidden="true" tabindex="-1"></a>        <span class="dt">FetchDone</span> results <span class="ot">-&gt;</span></span>
+<span id="cb19-21"><a href="#cb19-21" aria-hidden="true" tabindex="-1"></a>            ( { model</span>
+<span id="cb19-22"><a href="#cb19-22" aria-hidden="true" tabindex="-1"></a>                <span class="op">|</span> repos <span class="ot">=</span> results</span>
+<span id="cb19-23"><a href="#cb19-23" aria-hidden="true" tabindex="-1"></a>                , isLoading <span class="ot">=</span> <span class="dt">False</span></span>
+<span id="cb19-24"><a href="#cb19-24" aria-hidden="true" tabindex="-1"></a>                , alert <span class="ot">=</span> “” }</span>
+<span id="cb19-25"><a href="#cb19-25" aria-hidden="true" tabindex="-1"></a>                , Cmd.none )</span>
+<span id="cb19-26"><a href="#cb19-26" aria-hidden="true" tabindex="-1"></a>        <span class="dt">FetchFail</span> <span class="fu">error</span> <span class="ot">-&gt;</span> <span class="co">-- THIS!!!!!!!!!!!!</span></span>
+<span id="cb19-27"><a href="#cb19-27" aria-hidden="true" tabindex="-1"></a>            ( { model</span>
+<span id="cb19-28"><a href="#cb19-28" aria-hidden="true" tabindex="-1"></a>                <span class="op">|</span> repos <span class="ot">=</span> []</span>
+<span id="cb19-29"><a href="#cb19-29" aria-hidden="true" tabindex="-1"></a>                , isLoading <span class="ot">=</span> <span class="dt">False</span></span>
+<span id="cb19-30"><a href="#cb19-30" aria-hidden="true" tabindex="-1"></a>                , alert <span class="ot">=</span> (httpErrorToString model<span class="op">.</span>userName <span class="fu">error</span>) }</span>
+<span id="cb19-31"><a href="#cb19-31" aria-hidden="true" tabindex="-1"></a>                , Cmd.none )</span></code></pre></div>
+<p>Nice! App should now compile without errors.</p>
+<p>Now we can change init function and try if it works. Change:</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">init</span> <span class="op">:</span> ( <span class="dt">Model</span>, <span class="dt">Cmd</span> <span class="dt">Msg</span> )</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="fu">init</span> <span class="ot">=</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>    ( initialModel</span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>    , fetchDataAsEffects initialModel<span class="op">.</span>userName )</span></code></pre></div>
+<p>to:</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="fu">init</span> <span class="op">:</span> ( <span class="dt">Model</span>, <span class="dt">Cmd</span> <span class="dt">Msg</span> )</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="fu">init</span> <span class="ot">=</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>    ( initialModel</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>    , fetchData initialModel<span class="op">.</span>userName )</span></code></pre></div>
+<p><strong>It works! There is no compile error, request is sent and results are rendered. So far so good!</strong></p>
+<p>To complete this part we can just remove <strong>Cmd.none</strong> and call <strong>fetchData</strong> in update function’s <strong>FetchData</strong> branch which will be triggered later via user interactions.</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>    <span class="dt">FetchData</span> name <span class="ot">-&gt;</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>        ( { model</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>            <span class="op">|</span> isLoading <span class="ot">=</span> <span class="dt">True</span></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>            , resultsFor <span class="ot">=</span> model<span class="op">.</span>userName }</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>            , fetchData model<span class="op">.</span>userName )</span></code></pre></div>
+<p><a href="https://gist.github.com/turboMaCk/a2f9b204f3259fb2be10754e4ad10565#file-repos-elm">This</a> is snapshot of code at this stage:</p>
+<h2 id="events">Events</h2>
+<p>We are almost finished. Last missing step is to bring back events to allow user interactions.</p>
+<p>I’d like to start with uncommenting Events.onClick and removing address argument like this:</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>[ button</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>    [ <span class="kw">class</span> (classNames <span class="dt">Name</span>)</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>    — , Events.onClick address (<span class="dt">ChangeSort</span> <span class="dt">Name</span>) ]</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>    [ text “name” ]</span></code></pre></div>
+<p>new version:</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>[ button</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>    [ <span class="kw">class</span> (classNames <span class="dt">Name</span>)</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>    , Events.onClick (<span class="dt">ChangeSort</span> <span class="dt">Name</span>) ]</span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>    [ text “name” ]</span></code></pre></div>
+<p><strong>Now sorting buttons and repository description should work.</strong></p>
+<p>This is cool but we are still missing user name update and form submitting.
+In forms I’d like to use submit instead click since this makes Enter and other handy UX tweaks for mobile.
+Do you remember that two functions we previously commented out? One of the did the trick with Submit, other one hooks input event. Let’s have a look at <strong>Html.Events</strong> <a href="http://package.elm-lang.org/packages/elm-lang/html/1.0.0/Html-Events">documentation</a>.</p>
+<p><strong>Looks like new version have these two build in!</strong></p>
+<p>This means we can <strong>remove both commented functions</strong> and give the build-in ones a try.</p>
+<p>change:</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>input</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>    [ value model<span class="op">.</span>userName</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>    — , onInput address <span class="dt">NameChanged</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>    , <span class="kw">class</span> “search<span class="op">-</span>field” ] []</span></code></pre></div>
+<p>to:</p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>input</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>    [ value model<span class="op">.</span>userName</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>    , Events.onInput <span class="dt">NameChanged</span> ] []</span></code></pre></div>
+<p>and:</p>
+<div class="sourceCode" id="cb27"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>Html.form</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>    — [ onSubmit address model<span class="op">.</span>userName</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>    [ <span class="kw">class</span> “search<span class="op">-</span>form” ]</span></code></pre></div>
+<p>to:</p>
+<div class="sourceCode" id="cb28"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>Html.form</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>    [ Events.onSubmit (<span class="dt">FetchData</span> model<span class="op">.</span>userName)</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>    , <span class="kw">class</span> “search<span class="op">-</span>form” ]</span></code></pre></div>
+<p><strong>We are (almost) done!</strong></p>
+<p><a href="https://gist.github.com/turboMaCk/ab2ef6e7f9ac393645faa0c6754dda29#file-repos-elm">This</a> is final version of our new implementation.</p>
+<h2 id="load-app-in-html">Load app in Html</h2>
+<p>Last step is to make new version of application work with Html.
+Just follow upgrading guide. This how mine index.html looks like:</p>
+<div class="sourceCode" id="cb29"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;!DOCTYPE</span> HTML<span class="dt">&gt;</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;</span><span class="kw">html</span><span class="dt">&gt;</span></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&lt;</span><span class="kw">head</span><span class="dt">&gt;</span></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&lt;</span><span class="kw">meta</span><span class="ot"> charset</span><span class="op">=</span><span class="st">”UTF-8</span><span class="er">&quot;</span><span class="dt">&gt;</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&lt;</span><span class="kw">title</span><span class="dt">&gt;</span>Github repository browser<span class="dt">&lt;/</span><span class="kw">title</span><span class="dt">&gt;</span></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&lt;</span><span class="kw">link</span><span class="ot"> href</span><span class="op">=</span><span class="st">’https://fonts.googleapis.com/css?family</span><span class="er">=</span><span class="st">Open+Sans</span><span class="er">'</span><span class="ot"> rel</span><span class="op">=</span><span class="st">’stylesheet’</span><span class="ot"> type</span><span class="op">=</span><span class="st">’text/css’</span><span class="dt">&gt;</span></span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&lt;</span><span class="kw">link</span><span class="ot"> href</span><span class="op">=</span><span class="st">’https://fonts.googleapis.com/css?family</span><span class="er">=</span><span class="st">Lato:100italic</span><span class="er">'</span><span class="ot"> rel</span><span class="op">=</span><span class="st">’stylesheet’</span><span class="ot"> type</span><span class="op">=</span><span class="st">’text/css’</span><span class="dt">&gt;</span></span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&lt;</span><span class="kw">link</span><span class="ot"> rel</span><span class="op">=</span><span class="st">”stylesheet”</span><span class="ot"> href</span><span class="op">=</span><span class="st">”dist/styles/main.css”</span><span class="dt">&gt;</span></span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&lt;</span><span class="kw">script</span><span class="ot"> type=</span><span class="st">”text/javascript”</span><span class="ot"> src</span><span class="op">=</span><span class="st">”dist/Repos.js”</span><span class="dt">&gt;&lt;/</span><span class="kw">script</span><span class="dt">&gt;</span></span>
+<span id="cb29-10"><a href="#cb29-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&lt;/</span><span class="kw">head</span><span class="dt">&gt;</span></span>
+<span id="cb29-11"><a href="#cb29-11" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&lt;</span><span class="kw">body</span><span class="dt">&gt;</span></span>
+<span id="cb29-12"><a href="#cb29-12" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&lt;</span><span class="kw">script</span><span class="ot"> type=</span><span class="st">”text/javascript”</span><span class="dt">&gt;</span></span>
+<span id="cb29-13"><a href="#cb29-13" aria-hidden="true" tabindex="-1"></a>            <span class="kw">var</span> app <span class="op">=</span> Elm<span class="op">.</span><span class="at">Repos</span><span class="op">.</span><span class="fu">fullscreen</span>()<span class="op">;</span></span>
+<span id="cb29-14"><a href="#cb29-14" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&lt;/</span><span class="kw">script</span><span class="dt">&gt;</span></span>
+<span id="cb29-15"><a href="#cb29-15" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&lt;/</span><span class="kw">body</span><span class="dt">&gt;</span></span>
+<span id="cb29-16"><a href="#cb29-16" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;/</span><span class="kw">html</span><span class="dt">&gt;</span></span></code></pre></div>
+<p>Nothing too fancy. As you can see there is new api for rendering app in fullscreen.</p>
+<p>just change:</p>
+<div class="sourceCode" id="cb30"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> app <span class="op">=</span> Elm<span class="op">.</span><span class="fu">fullscreen</span>(Elm<span class="op">.</span><span class="at">Repos</span>)<span class="op">;</span></span></code></pre></div>
+<p>to new version:</p>
+<div class="sourceCode" id="cb31"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> app <span class="op">=</span> Elm<span class="op">.</span><span class="at">Repos</span><span class="op">.</span><span class="fu">fullscreen</span>()<span class="op">;</span></span></code></pre></div>
+<p>That’s it. We are done!</p>
+<h2 id="or-not-edited-on-may-28th">Or not? (edited on May 28th)</h2>
+<p>As <a href="https://www.reddit.com/user/jediknight">jediknight</a> pointed out in <a href="https://www.reddit.com/r/elm/comments/4jhaxf/elm_017_successful_upgrade_of_real_world_app_and/">discussion on reddit</a> there is actually much nicer way how to create model msg tuple using <code>!</code> infix function!
+I recommend to use it since it adds some extra abstraction to your actions.
+This function takes two a arguments — model (whatever) and List of Msg. Let’s see how we can use it.</p>
+<p>this is on of our old update branches:</p>
+<div class="sourceCode" id="cb32"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>update msg model <span class="ot">=</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">case</span> msg <span class="kw">of</span></span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>        <span class="dt">NoOp</span> <span class="ot">-&gt;</span></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>            ( model, Cmd.none )</span></code></pre></div>
+<p>and this is how it looks like with use of <code>!</code> function</p>
+<div class="sourceCode" id="cb33"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>update msg model <span class="ot">=</span></span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">case</span> msg <span class="kw">of</span></span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>        <span class="dt">NoOp</span> <span class="ot">-&gt;</span></span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>            model <span class="op">!</span> []</span></code></pre></div>
+<p>As always <a href="https://gist.github.com/turboMaCk/a77498c85347eda4581b6be08be8c3ef#file-repos-elm">here</a> is shippet of whole application.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>I think this demonstrates one possible pattern of how to upgrade your web app written in elm to version 0.17.
+We started with views. Removing all calls to code we do not need to just get initial render.
+Then fixing update function and main (StartApp) code. Doing so bring us to state where we were able to get initial render.
+Then we made Http work so our app was able to fetch data a render them.
+We made events work so user can interact with app as before. And finally we connected our app to html.</p>
+<h2 id="elm-architecture-types">Elm, Architecture, Types…</h2>
+<p>Somewhere above I was taking about how hard it is to upgrade your application.
+I also mentioned few examples where the difference between legacy and new API made it almost impossible to upgrade existing code bases.
+I think <strong>with elm the situation is different</strong>.</p>
+<p>This is on of scenarios where types really cover your back.
+Thanks to the fact that elm is <a href="https://en.wikipedia.org/wiki/Strong_and_weak_typing">strongly</a> and <a href="http://stackoverflow.com/questions/1517582/what-is-the-difference-between-statically-typed-and-dynamically-typed-languages">statically</a>
+typed it’s <strong>not such a big deal to introduce huge API changes</strong> as 0.17 did.
+I’m not a hardcore static type fan boy. I think there are big trade offs while choosing static over dynamic typed languages.
+Dynamic typing should be pretty powerful in some cases. I’m also pretty big fan of meta programming (think about Lisp(s) or Ruby).
+Anyway with static typing comes some extra safety. Extra safety in terms that you no need to be afraid start aggressively rewriting parts of your code.
+I think this is one thing Elm really shines in. My bets on Elm are pretty high thanks to this.
+I think Elm’s community can really benefits of this nature of safety.
+I expect there is <strong>bright future for Elm as language and architecture</strong>.
+The potential of bringing cutting edge concepts and constantly iterating on all its building blocks can really runs over whole <strong>React</strong> and <strong>Clojure Script</strong> word.
+I strongly believe that neither of these ecosystems will be able to implement experimental primitives rethink its design
+and more importantly bring all of this easily to large scale production applications as Elm can.</p>
+<p>Thanks to everyone in this community for making all of this happened. I’m super excited about what came next.</p>
+</main>
+
+
+<div class="reddit-discussion" id="discussion">
+  <img src="../assets/reddit.png" alt="redit" class="reddit-logo">
+  Since I'm not a fan of disqus or any other commenting system there is no disscusion under this post.<br>
+  However I do like reddit as a platform so feel free to shout here:<br>
+  <a href="https://www.reddit.com//r/elm/comments/4jhaxf/elm_017_successful_upgrade_of_real_world_app_and/">/r/elm/comments/4jhaxf/elm_017_successful_upgrade_of_real_world_app_and/</a>
+</div>
+
+
+      </div>
+      <footer id="footer">
+        <a href="https://github.com/turboMaCk/turboMaCk.github.io">Source</a> available under BSD-3-Clause.<br>
+        Content is published under <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.<br>
+        Proudly powered by <a href="http://jaspervdj.be/hakyll">Hakyll</a>; Theme by Marek Fajkus<br>
+        <a href="../rss.xml">RSS 2.0</a> compatible<br>
+        This site is not tracking you.
+      </footer>
+    </main>
+
+    <!-- MathJax is library for displaying math nicely -->
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML" async></script>
+  </body>
+</html>

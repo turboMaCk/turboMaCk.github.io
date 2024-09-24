@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="Description" content="My personal blog where I write mostly on topic of programming, especially function programming,
+                   system design and other things related to what I've learned, wanted to share or complain about
+                   within the discipline of software enginnering and informatics.">
+    <title>Dealing with Multiple Dropbox Accounts</title>
+    <link rel="icon" type="image/png" href="../favicon.png" />
+    <link rel="stylesheet" type="text/css" href="../css/default.css" />
+  </head>
+  <body>
+    <header class="page-header">
+        <nav class="navigation">
+            
+                <a href="../">Home</a>
+                <a href="../archive.html" class="active">B\og</a>
+            
+        </nav>
+    </header>
+
+    <main class="main-container">
+      <div class="content">
+        <h1>
+          Dealing with Multiple Dropbox Accounts
+          
+            <span class="subtitle">Tiny hack to boost your productivity</span>
+          
+        </h1>
+
+        
+<div class="tags">
+    Posted in: <a title="All pages tagged 'tiny-hacks'." href="../tags/tiny-hacks.html" rel="tag">tiny-hacks</a>, <a title="All pages tagged 'nix'." href="../tags/nix.html" rel="tag">nix</a>, <a title="All pages tagged 'shell'." href="../tags/shell.html" rel="tag">shell</a>, <a title="All pages tagged 'linux'." href="../tags/linux.html" rel="tag">linux</a>, <a title="All pages tagged 'productivity'." href="../tags/productivity.html" rel="tag">productivity</a>.
+</div>
+
+<div class="info">
+    Posted on April 29, 2020
+    
+</div>
+
+<main id="content">
+    <p>It’s pretty common for a company to require its long-term consultants and employees to use
+all sorts of tools and accounts.
+On a contrary, the way these products often operate though is that they expect user to
+have a single account. For organizations,
+there is usually an ability to create teams - a group of multiple individual accounts.
+The problem is that this is not exactly how companies like to do things.</p>
+<p>Companies often like to provide @company email address and create all other
+accounts under it. This means that if you have a personal account
+for any of the service company requires you to use, you’re likely in a situation which most of these
+apps are not prepared for. Two accounts on a single machine.</p>
+<p>Lets, for instance, have a look at <a href="https://www.dropbox.com">Dropbox</a>.</p>
+<p>There is no option to add an account without logging-out the existing one.
+There are some <a href="https://help.dropbox.com/teams-admins/team-member/team-folders">options for teams</a> but you can’t use them if your use-case
+involves multiple accounts.</p>
+<p>However, it must be still possible to have multiple Dropbox accounts
+for multiple users on a single system, right? How does that work?</p>
+<h2 id="analyzing-dropbox">Analyzing Dropbox</h2>
+<p>Dropbox seems to be creating <code>.dropbox</code> directory in to <code>$HOME</code> so lets have a look what is going on there.</p>
+<pre class="shell"><code>$ tree ~/.dropbox
+/home/marek/.dropbox
+├── command_socket
+├── dropbox.pid
+├── events
+│   ├── store
+│   └── store1
+├── host.db
+├── iface_socket
+├── info.json
+├── instance1
+│   ├── aggregation.dbx
+│   ├── config.db
+│   ├── config.dbx
+│   ├── hostkeys
+│   ├── sync
+│   │   ├── nucleus.sqlite3
+│   │   ├── nucleus.sqlite3-shm
+│   │   ├── nucleus.sqlite3-wal
+│   │   └── temp
+│   │       └── 04625d37a5e6b439.sqlite3
+│   └── unlink.db
+├── instance_db
+│   ├── hostkeys
+│   └── instance.dbx
+├── logs
+│   ├── 0
+│   ├── 1
+│   │   ├── 1-6999-5ea575c4.tmp
+│   │   ├── 1-6ac8-5ea81628.tmp
+│   │   └── 1-9231-5ea575c5.tmp
+│   └── 1ro
+│       └── 1-249f-5db03970.tmp
+├── machine_storage
+├── metrics
+│   └── store.bin
+└── unlink.db
+
+11 directories, 24 files
+</code></pre>
+<p>We don’t even need to analyze this too deeply as on a first look it already seems
+that all the information associated with the account and its state is within this directory.</p>
+<p>The first thing that comes to mind is to create a new fake HOME directory, set the <code>HOME</code> environment variable
+to point to this folder, and then run Dropbox within this environment.</p>
+<pre class="shell"><code>$ mkdir -p ~/Holmusk-Home
+$ HOME=$HOME/Holmusk-Home dropbox
+</code></pre>
+<p>And sure enough, Dropbox seems to start the bootstrapping of the new <code>.dropbox</code> folder
+and, after successful login to the company account, it also starts pulling the data it should.</p>
+<p>This means we can simply create a shell script that wraps the <code>dropbox</code> binary in this way.
+It may be worth mentioning that this solution should work across <strong><strong>Linux &amp; MacOS</strong></strong></p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">#!/usr/bin/env bash</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="bu">set</span> <span class="at">-e</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="va">CUSTOM_HOME</span><span class="op">=</span><span class="va">$HOME</span>/Holmusk-Home</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="fu">mkdir</span> <span class="at">-p</span> <span class="va">$CUSTOM_HOME</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="va">HOME</span><span class="op">=</span><span class="va">$CUSTOM_HOME</span> <span class="ex">dropbox</span></span></code></pre></div>
+<div class="note">
+<p>As far as I know, Dropbox doesn’t support Unix like systems other than Linux and MacOS,
+but if it does, it will surely work for these as well.</p>
+</div>
+<p>Now all that is needed is to <code>chmod +x</code> the script and move it to <code>$PATH</code>.
+On MacOS it might also be practical to use <a href="https://support.apple.com/guide/automator/welcome/mac">Automator</a> to wrap the script
+as an application.</p>
+<h2 id="nix">Nix</h2>
+<p>Since I’m using <a href="https://nixos.org/nixos/">NixOS</a> I like to do things like this in a nix way.
+So in fact in my case, I have <code>profile/holmusk.nix</code> file in my <a href="https://github.com/turboMaCk/Dotfiles/">Dotfiles</a>
+and I’m putting things like this in there.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode nix"><code class="sourceCode nix"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="op">{</span> <span class="va">config</span><span class="op">,</span> <span class="va">pkgs</span><span class="op">,</span> <span class="op">...</span> <span class="op">}</span>:</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="va">custom-home</span> <span class="op">=</span> <span class="st">&quot;~/Holmusk-Home&quot;</span><span class="op">;</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="va">holmusk-dropbox</span> <span class="op">=</span> <span class="kw">with</span> pkgs<span class="op">;</span> writeScriptBin <span class="st">&quot;dropbox-holmusk&quot;</span> <span class="st">''</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="st">    #!/usr/bin/env bash</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="st">    set -e</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="st">    # create home directory if it doesn't exist</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="st">    mkdir -p </span><span class="sc">${</span>custom<span class="op">-</span>home<span class="sc">}</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="st">    # start dropbox for Holmusk team</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="st">    HOME=</span><span class="sc">${</span>custom<span class="op">-</span>home<span class="sc">}</span><span class="st"> </span><span class="sc">${</span>dropbox<span class="sc">}</span><span class="st">/bin/dropbox</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="st">  ''</span><span class="op">;</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>  <span class="va">sync-rwe-assets</span> <span class="op">=</span> <span class="kw">with</span> pkgs<span class="op">;</span> writeScriptBin <span class="st">&quot;sync-rwe-assets&quot;</span> <span class="st">''</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a><span class="st">    #!/usr/bin/env bash</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a><span class="st">    set -e</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a><span class="st">    if [[ ! -f package.json ]]; then</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a><span class="st">      echo &quot;This command must be ran from frontend project directory!&quot;</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a><span class="st">      exit 1</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a><span class="st">    fi</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a><span class="st">    PROJECT_NAME=$(</span><span class="sc">${</span>jq<span class="sc">}</span><span class="st">/bin/jq '.name' package.json | sed 's/&quot;//g')</span></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a><span class="st">    if [[ $PROJECT_NAME != &quot;pi-frontend&quot; ]]; then</span></span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a><span class="st">      echo &quot;This is not RWE project!&quot;</span></span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a><span class="st">      exit 1</span></span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a><span class="st">    fi</span></span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a><span class="st">    cp -r public/assets/theme </span><span class="sc">${</span>custom<span class="op">-</span>home<span class="sc">}</span><span class="st">/Dropbox\ \(Holmusk\)/RWE\ Design/Assets\ -\ Web</span></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a><span class="st">  ''</span><span class="op">;</span></span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a><span class="kw">in</span> <span class="op">{</span></span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>  <span class="va">environment</span>.<span class="va">systemPackages</span> <span class="op">=</span> <span class="op">[</span></span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>    holmusk-dropbox</span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a>    sync-rwe-assets</span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a>  <span class="op">];</span></span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>As you can see, I also have another small script that automates the synchronization
+of assets between the project and a shared Dropbox folder.
+My workflow is to export SVG files for UI from <a href="https://www.figma.com/files/recent">Figma</a>, optimize them, and put them to the project assets.
+I use this script for sharing processed files back to the design team in case they need them.
+It roughly works like this.</p>
+<ol type="1">
+<li>Check the presence of <code>package.json</code> in the directory.</li>
+<li>Check <code>name</code> value in <code>package.json</code> - this script is related to the specific project.</li>
+<li>Copy files to the <code>Dropbox</code> folder.</li>
+</ol>
+<h2 id="wrap-up">Wrap Up</h2>
+<p>Shell scripts are terrible because the shell languages mostly are.
+Still, it’s the simplest way to automate smaller tasks in your workflow.
+Also, Nix is awesome.</p>
+</main>
+
+
+
+      </div>
+      <footer id="footer">
+        <a href="https://github.com/turboMaCk/turboMaCk.github.io">Source</a> available under BSD-3-Clause.<br>
+        Content is published under <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.<br>
+        Proudly powered by <a href="http://jaspervdj.be/hakyll">Hakyll</a>; Theme by Marek Fajkus<br>
+        <a href="../rss.xml">RSS 2.0</a> compatible<br>
+        This site is not tracking you.
+      </footer>
+    </main>
+
+    <!-- MathJax is library for displaying math nicely -->
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML" async></script>
+  </body>
+</html>

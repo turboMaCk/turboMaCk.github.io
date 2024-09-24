@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="Description" content="My personal blog where I write mostly on topic of programming, especially function programming,
+                   system design and other things related to what I've learned, wanted to share or complain about
+                   within the discipline of software enginnering and informatics.">
+    <title>Rust vs GUI</title>
+    <link rel="icon" type="image/png" href="../favicon.png" />
+    <link rel="stylesheet" type="text/css" href="../css/default.css" />
+  </head>
+  <body>
+    <header class="page-header">
+        <nav class="navigation">
+            
+                <a href="../">Home</a>
+                <a href="../archive.html" class="active">B\og</a>
+            
+        </nav>
+    </header>
+
+    <main class="main-container">
+      <div class="content">
+        <h1>
+          Rust vs GUI
+          
+            <span class="subtitle">Implications of Rust's borrow checking and memory ownership on GUI development (simple case)</span>
+          
+        </h1>
+
+        
+<div class="tags">
+    Posted in: <a title="All pages tagged 'rust'." href="../tags/rust.html" rel="tag">rust</a>, <a title="All pages tagged 'GUI'." href="../tags/GUI.html" rel="tag">GUI</a>, <a title="All pages tagged 'GTK'." href="../tags/GTK.html" rel="tag">GTK</a>, <a title="All pages tagged 'nix'." href="../tags/nix.html" rel="tag">nix</a>.
+</div>
+
+<div class="info">
+    Posted on July 28, 2019
+    
+</div>
+
+<main id="content">
+    <p>I’m neither an experienced Rust programmer nor GTK developer. I don’t even have that much experience
+with building native GUIs or with system level programming. Hell, I might be the least qualified guy
+on the internet to write this post. Despite that, on more than just one occasion, I wondered what implications Rust’s static analysis of memory access has on writing GUIs.</p>
+<div class="updates">
+<p>I received a ton of constructive and positive feedback on <a href="https://www.reddit.com/r/rust">/r/rust</a>.
+Rust community really proved to be nothing but great.
+You can find the <a href="#discussion">link to the Reddit comments down bellow</a>.
+I didn’t expect that much positive feedback and I truly humbled to receive it.
+I made a few updates based on the discussion:</p>
+<ul>
+<li>Avoiding the use the old project name <code>GTK+</code> as it’s now called just <code>GTK</code></li>
+<li>Make operations with state truly atomic (thanks <a href="https://www.reddit.com/r/rust/comments/clkcba/building_gtk_app_in_rust_for_a_first_time/evw8ojp/">JayDepp</a>)</li>
+<li>Mention PopOS’ <a href="https://github.com/pop-os/firmware-manager">Firmware Manager</a> and <a href="https://www.reddit.com/r/rust/comments/clkcba/building_gtk_app_in_rust_for_a_first_time/evx77ok/">mmstick’s comment</a> and the <a href="https://github.com/xi-editor/druid">druid project</a></li>
+</ul>
+</div>
+<p>GUI development is a special beast. I consider it to be an interesting use-case as
+the GUI development is usually associated with:</p>
+<ul>
+<li>Threading or Concurrency (or both)</li>
+<li>Long living application state and mutations</li>
+<li>in case of native UI, linking to sh*tload of C/C++ libraries</li>
+<li>imperative, often object oriented, APIs.</li>
+</ul>
+<p>I thought it might be interesting to check implications which Rust’s borrow and ownership checker has
+in those types of applications as clearly, even in the most simple GUI, one simply must run
+into some complications. That’s exactly what I’m going to do and document here. I’m going to implement the most
+simple (and useless) GTK application in Rust just for the sake of feeling the pain of fighting the compiler
+as an inexperienced user.</p>
+<h2 id="boring-but-necessary-setup">Boring but Necessary Setup</h2>
+<p>I’ve chosen GTK only because I’m developing this on Linux and I have a feeling that C lib will
+probably have better bindings than C++ one would have (QT). First thing we will need
+to deal with is an installation of all libraries. I’m going to use the <a href="https://nixos.org/nix/">nix package manager</a> because
+it seems to me like the only sane way of managing this. Setup should be compatible across Linux and Mac. If you’re trying to replicate this on Windows, <a href="https://developer.gnome.org/gtk3/stable/gtk-windows.html">good luck following this</a>.</p>
+<p>We’re going to create <code>shell.nix</code> file to define development environment containing all the tools we need.
+Note that I’m using <code>nixos-unstable</code> channel myself.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode nix"><code class="sourceCode nix"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">{</span> <span class="va">pkgs</span> <span class="op">?</span> <span class="bu">import</span> &lt;nixpkgs&gt; <span class="op">{}</span> <span class="op">}</span>:</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">with</span> pkgs<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>mkShell <span class="op">{</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="va">buildInputs</span> <span class="op">=</span> <span class="op">[</span> cargo rustc cairo gtk3 glib pkgconfig <span class="op">];</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Now, running <code>$ nix-shell</code> should bring us to the bash shell with all the native dependencies including
+rustc and cargo installed.</p>
+<p>Use cargo to bootstrap the project within nix-shell:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">[nix-shell]</span> cargo init</span></code></pre></div>
+<p>to confirm that compilation works, we can run the hello world project generated by cargo.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">[nix-shell]</span> cargo run</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>   <span class="ex">Compiling</span> rust-gtk-counter v0.1.0 <span class="er">(</span><span class="ex">/home/marek/Projects/rust-gtk-counter</span><span class="kw">)</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="ex">Finished</span> dev [unoptimized + debuginfo] target<span class="er">(</span><span class="ex">s</span><span class="kw">)</span> <span class="er">in</span> <span class="ex">0.39s</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>     <span class="ex">Running</span> <span class="kw">`</span><span class="ex">target/debug/rust-gtk-counter</span><span class="kw">`</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="ex">Hello,</span> world!</span></code></pre></div>
+<p>Because I don’t really have an idea what I’m doing, I’m going to just copy <a href="https://gtk-rs.org/">example Cargo.toml</a>.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">[package]</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="ex">name</span> = <span class="st">&quot;rust-gtk-counter&quot;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="ex">version</span> = <span class="st">&quot;0.1.0&quot;</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="ex">authors</span> = <span class="pp">[</span><span class="st">&quot;Marek Fajkus &lt;marek.faj@gmail.com&gt;&quot;</span><span class="pp">]</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="ex">edition</span> = <span class="st">&quot;2018&quot;</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="ex">[dependencies.gtk]</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="ex">version</span> = <span class="st">&quot;0.7.0&quot;</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="ex">features</span> = <span class="pp">[</span><span class="st">&quot;v3_16&quot;</span><span class="pp">]</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="ex">[dependencies.gio]</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="ex">version</span> = <span class="st">&quot;&quot;</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="ex">features</span> = <span class="pp">[</span><span class="st">&quot;v2_44&quot;</span><span class="pp">]</span></span></code></pre></div>
+<p>I also recommend running <code>cargo build</code> right away as at this point, it will need to pull deps, do the linking and compilation,
+and there is really no point in waiting for all of this later.</p>
+<h2 id="ui-code">UI Code</h2>
+<p>With help of <a href="https://www.gtk.org/documentation.php">GTK documentation</a> and <a href="http://gtk-rs.org/docs/gtk/">rust-gtk documentation</a>, I was able to hack together
+world’s most embarrassing interface, yay. I’m just going to put the code here as there is really nothing that
+interesting in it. I put all the code to <code>src/main.rs</code> and even <code>main</code> procedure because why the hell not.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode rust"><code class="sourceCode rust"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">extern</span> <span class="kw">crate</span> gtk<span class="op">;</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="kw">extern</span> <span class="kw">crate</span> gio<span class="op">;</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="kw">use</span> <span class="pp">std::env::</span>args<span class="op">;</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="kw">use</span> <span class="pp">gtk::prelude::</span><span class="op">*;</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="kw">use</span> <span class="pp">gio::prelude::</span><span class="op">*;</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="kw">use</span> <span class="pp">gtk::</span><span class="op">{</span>Application<span class="op">,</span> ApplicationWindow<span class="op">,</span> Button<span class="op">,</span> <span class="dt">Box</span><span class="op">,</span> Label<span class="op">,};</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="kw">fn</span> main() <span class="op">{</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    <span class="co">// The simplest way to initalize new application</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span> application <span class="op">=</span> <span class="pp">Application::</span>new(<span class="cn">None</span><span class="op">,</span> <span class="bu">Default</span><span class="pp">::</span><span class="kw">default</span>())</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span>expect(<span class="st">&quot;failed to initialize GTK application&quot;</span>)<span class="op">;</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>    <span class="co">// UI initialization</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>    application<span class="op">.</span>connect_activate(<span class="op">|</span>app<span class="op">|</span> <span class="op">{</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Window</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>        <span class="kw">let</span> window <span class="op">=</span> <span class="pp">ApplicationWindow::</span>new(app)<span class="op">;</span></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>        window<span class="op">.</span>set_title(<span class="st">&quot;First GTK Program&quot;</span>)<span class="op">;</span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>        window<span class="op">.</span>set_default_size(<span class="dv">350</span><span class="op">,</span> <span class="dv">70</span>)<span class="op">;</span></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Containers</span></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>        <span class="kw">let</span> container <span class="op">=</span> <span class="dt">Box</span><span class="pp">::</span>new(<span class="pp">gtk::Orientation::</span>Vertical<span class="op">,</span> <span class="dv">3</span>)<span class="op">;</span></span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Header</span></span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>        <span class="kw">let</span> header <span class="op">=</span> <span class="pp">gtk::HeaderBar::</span>new()<span class="op">;</span></span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>        <span class="kw">let</span> label <span class="op">=</span> <span class="pp">Label::</span>new(<span class="cn">Some</span>(<span class="st">&quot;Starting at 0&quot;</span>))<span class="op">;</span></span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Content</span></span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>        <span class="kw">let</span> inc_btn <span class="op">=</span> <span class="pp">Button::</span>new_with_label(<span class="st">&quot;Increment&quot;</span>)<span class="op">;</span></span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>        <span class="kw">let</span> dec_btn <span class="op">=</span> <span class="pp">Button::</span>new_with_label(<span class="st">&quot;Decrement&quot;</span>)<span class="op">;</span></span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Compose piece together</span></span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>        header<span class="op">.</span>add(<span class="op">&amp;</span>label)<span class="op">;</span></span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a>        container<span class="op">.</span>add(<span class="op">&amp;</span>header)<span class="op">;</span></span>
+<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a>        container<span class="op">.</span>add(<span class="op">&amp;</span>inc_btn)<span class="op">;</span></span>
+<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a>        container<span class="op">.</span>add(<span class="op">&amp;</span>dec_btn)<span class="op">;</span></span>
+<span id="cb5-38"><a href="#cb5-38" aria-hidden="true" tabindex="-1"></a>        window<span class="op">.</span>add(<span class="op">&amp;</span>container)<span class="op">;</span></span>
+<span id="cb5-39"><a href="#cb5-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-40"><a href="#cb5-40" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Display all widgets</span></span>
+<span id="cb5-41"><a href="#cb5-41" aria-hidden="true" tabindex="-1"></a>        window<span class="op">.</span>show_all()<span class="op">;</span></span>
+<span id="cb5-42"><a href="#cb5-42" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb5-43"><a href="#cb5-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-44"><a href="#cb5-44" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Passing arguments to the app</span></span>
+<span id="cb5-45"><a href="#cb5-45" aria-hidden="true" tabindex="-1"></a>    application<span class="op">.</span>run(<span class="op">&amp;</span>args()<span class="op">.</span><span class="pp">collect::</span><span class="op">&lt;</span><span class="dt">Vec</span><span class="op">&lt;</span>_<span class="op">&gt;&gt;</span>())<span class="op">;</span></span>
+<span id="cb5-46"><a href="#cb5-46" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>And this is how the app looks like when I run <code>$ cargo run</code>.
+I’m using tiling window manager (XMonad) so this will probably
+look slightly different on most other desktops.</p>
+<p><img src="../assets/2019-07-28-ui.png" /></p>
+<h2 id="adding-actions">Adding Actions</h2>
+<p>The application is not doing much. It’s doing exactly nothing (other than rendering useless window with useless widgets).
+Let’s try doing the most useless thing in the world like changing the title whenever we click on one of buttons.</p>
+<p>Let’s just try what seems like the most simple way of doing this - changing <code>content</code> section to something like this:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode rust"><code class="sourceCode rust"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Content</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> inc_btn <span class="op">=</span> <span class="pp">Button::</span>new_with_label(<span class="st">&quot;Increment&quot;</span>)<span class="op">;</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>inc_btn<span class="op">.</span>connect_clicked(<span class="op">|</span>_<span class="op">|</span> <span class="op">{</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    label<span class="op">.</span>set_label(<span class="st">&quot;Incremented&quot;</span>)<span class="op">;</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> dec_btn <span class="op">=</span> <span class="pp">Button::</span>new_with_label(<span class="st">&quot;Decrement&quot;</span>)<span class="op">;</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>dec_btn<span class="op">.</span>connect_clicked(<span class="op">|</span>_<span class="op">|</span> <span class="op">{</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    label<span class="op">.</span>set_label(<span class="st">&quot;Decremented&quot;</span>)<span class="op">;</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">[nix-shell]</span> cargo run</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="va">error</span><span class="op">[</span>E0373<span class="op">]</span><span class="ex">:</span> closure may outlive the current function, but it borrows <span class="kw">`</span><span class="ex">label</span><span class="kw">`</span>, which is owned by the current function</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="ex">--</span><span class="op">&gt;</span> src/main.rs:31:33</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="ex">31</span> <span class="kw">|</span>         <span class="ex">inc_btn.connect_clicked</span><span class="er">(</span><span class="kw">|</span><span class="ex">_</span><span class="kw">|</span> <span class="kw">{</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span>                                 <span class="ex">^^^</span> may outlive borrowed value <span class="kw">`</span><span class="ex">label</span><span class="kw">`</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="ex">32</span> <span class="kw">|</span>             <span class="ex">label.set_label</span><span class="er">(</span><span class="st">&quot;Incremented&quot;</span><span class="kw">);</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span>             <span class="ex">-----</span> <span class="kw">`</span><span class="ex">label</span><span class="kw">`</span> is borrowed here</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="ex">note:</span> function requires argument type to outlive <span class="kw">`</span><span class="st">'static`</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="st">  --&gt; src/main.rs:31:9</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a><span class="st">   |</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a><span class="st">31 | /         inc_btn.connect_clicked(|_| {</span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a><span class="st">32 | |             label.set_label(&quot;Incremented&quot;);</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a><span class="st">33 | |         });</span></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a><span class="st">   | |__________^</span></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a><span class="st">help: to force the closure to take ownership of `label` (and any other referenced variables), use the `move` keyword</span></span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a><span class="st">   |</span></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a><span class="st">31 |         inc_btn.connect_clicked(move |_| {</span></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a><span class="st">   |                                 ^^^^^^^^</span></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a><span class="st">   ....</span></span></code></pre></div>
+<p>Of course… We don’t have GC to “track the references” to label for us so we need to somehow make sure it’s available for
+as long as we need to use that reference. That is whenever the <code>connect_clicked</code> closure will evaluate.
+But we have a hint about using <code>move</code> to transfer ownership of label so let’s just add it.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode rust"><code class="sourceCode rust"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Content</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> inc_btn <span class="op">=</span> <span class="pp">Button::</span>new_with_label(<span class="st">&quot;Increment&quot;</span>)<span class="op">;</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>inc_btn<span class="op">.</span>connect_clicked(<span class="kw">move</span> <span class="op">|</span>_<span class="op">|</span> <span class="op">{</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    label<span class="op">.</span>set_label(<span class="st">&quot;Incremented&quot;</span>)<span class="op">;</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> dec_btn <span class="op">=</span> <span class="pp">Button::</span>new_with_label(<span class="st">&quot;Decrement&quot;</span>)<span class="op">;</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>dec_btn<span class="op">.</span>connect_clicked(<span class="kw">move</span> <span class="op">|</span>_<span class="op">|</span> <span class="op">{</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>    label<span class="op">.</span>set_label(<span class="st">&quot;Decremented&quot;</span>)<span class="op">;</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<p>And we get another error.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ex">[nix-shell]</span> cargo run</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="ex">Compiling</span> rust-gtk-counter v0.1.0 <span class="er">(</span><span class="ex">/home/marek/Projects/rust-gtk-counter</span><span class="kw">)</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="va">error</span><span class="op">[</span>E0382<span class="op">]</span><span class="ex">:</span> use of moved value: <span class="kw">`</span><span class="ex">label</span><span class="kw">`</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="ex">--</span><span class="op">&gt;</span> src/main.rs:35:33</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="ex">27</span> <span class="kw">|</span>         <span class="bu">let</span> <span class="va">label</span> <span class="op">=</span> <span class="va">Label</span><span class="op">::</span><span class="va">new</span><span class="er">(</span><span class="ex">Some</span><span class="er">(</span><span class="st">&quot;Starting at 0&quot;</span><span class="kw">));</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span>             <span class="ex">-----</span> move occurs because <span class="kw">`</span><span class="ex">label</span><span class="kw">`</span> has type <span class="kw">`</span><span class="ex">gtk::Label</span><span class="kw">`</span>, which does not implement the <span class="kw">`</span><span class="ex">Copy</span><span class="kw">`</span> trait</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="ex">...</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a><span class="ex">31</span> <span class="kw">|</span>         <span class="ex">inc_btn.connect_clicked</span><span class="er">(</span><span class="ex">move</span> <span class="kw">|</span><span class="ex">_</span><span class="kw">|</span> <span class="kw">{</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span>                                 <span class="ex">--------</span> value moved into closure here</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a><span class="ex">32</span> <span class="kw">|</span>             <span class="ex">label.set_label</span><span class="er">(</span><span class="st">&quot;Incremented&quot;</span><span class="kw">);</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span>             <span class="ex">-----</span> variable moved due to use in closure</span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a><span class="ex">...</span></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a><span class="ex">35</span> <span class="kw">|</span>         <span class="ex">dec_btn.connect_clicked</span><span class="er">(</span><span class="ex">move</span> <span class="kw">|</span><span class="ex">_</span><span class="kw">|</span> <span class="kw">{</span></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span>                                 <span class="ex">^^^^^^^^</span> value used here after move</span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a><span class="ex">36</span> <span class="kw">|</span>             <span class="ex">label.set_label</span><span class="er">(</span><span class="st">&quot;Decremented&quot;</span><span class="kw">);</span></span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span>             <span class="ex">-----</span> use occurs due to use in closure</span></code></pre></div>
+<p>Maybe obviously, we can’t simply move ownership to multiple places.
+But maybe we can create copy of label reference for each button like this:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode rust"><code class="sourceCode rust"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Content</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> inc_btn <span class="op">=</span> <span class="pp">Button::</span>new_with_label(<span class="st">&quot;Increment&quot;</span>)<span class="op">;</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span> label_clone <span class="op">=</span> label<span class="op">.</span>clone()<span class="op">;</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>    inc_btn<span class="op">.</span>connect_clicked(<span class="kw">move</span> <span class="op">|</span>_<span class="op">|</span> <span class="op">{</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>        label_clone<span class="op">.</span>set_label(<span class="st">&quot;Incremented&quot;</span>)<span class="op">;</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> dec_btn <span class="op">=</span> <span class="pp">Button::</span>new_with_label(<span class="st">&quot;Decrement&quot;</span>)<span class="op">;</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span> label_clone <span class="op">=</span> label<span class="op">.</span>clone()<span class="op">;</span></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>    dec_btn<span class="op">.</span>connect_clicked(<span class="kw">move</span> <span class="op">|</span>_<span class="op">|</span> <span class="op">{</span></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>        label_clone<span class="op">.</span>set_label(<span class="st">&quot;Decremented&quot;</span>)<span class="op">;</span></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>I’m using blocks to create the nested namespace so I don’t have to be that creative with naming.
+But more importantly, the code above compiles and even works!</p>
+<div class="note">
+<p>Some might expect that this code won’t work as we create independent clones of <code>gtk::Label</code>.
+I believe this type (as any other Widget) is just a reference to some GTK object so
+cloning it means creating just another reference pointing to the same GTK runtime thing.
+You can try to add the same thing or a clone of the same thing multiple times to the window.
+It won’t work the second time and print runtime warning to the stderr.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">(</span><span class="ex">rust-gtk-counter:16318</span><span class="kw">)</span><span class="bu">:</span> Gtk-WARNING <span class="pp">**</span>: 17:54:30.775: Attempting to add a widget with type GtkLabel to a container of type GtkBox, but the widget is already inside a container of type GtkHeaderBar, please remove the widget from its existing container first.</span></code></pre></div>
+</div>
+<h2 id="adding-the-state">Adding the State</h2>
+<p>Now, in order to raise our app from the absolute bottom of uselessness to just a bottom of it, we will need
+to introduce some state. And what is better than good old integer. And since we’re not building just
+any stupid application which does nothing, and thus can be implemented in a language like Haskell, we
+just reach for the only enterprise approved technique - <em>the mutation</em>.</p>
+<p>Let’s be naive and just add our mutable state to the app for instance somewhere here…</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode rust"><code class="sourceCode rust"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Containers</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> container <span class="op">=</span> <span class="dt">Box</span><span class="pp">::</span>new(<span class="pp">gtk::Orientation::</span>Vertical<span class="op">,</span> <span class="dv">3</span>)<span class="op">;</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="co">// State</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> <span class="kw">mut</span> counter <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span></code></pre></div>
+<p>…and mutate it in handlers. I’m doing so only for increment button for now, why I’m doing so will be
+more apparent later on.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode rust"><code class="sourceCode rust"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Content</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> inc_btn <span class="op">=</span> <span class="pp">Button::</span>new_with_label(<span class="st">&quot;Increment&quot;</span>)<span class="op">;</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span> label_clone <span class="op">=</span> label<span class="op">.</span>clone()<span class="op">;</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    inc_btn<span class="op">.</span>connect_clicked(<span class="kw">move</span> <span class="op">|</span>_<span class="op">|</span> <span class="op">{</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>        counter <span class="op">+=</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>        label_clone<span class="op">.</span>set_label(<span class="st">&quot;Incremented&quot;</span>)<span class="op">;</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Boom! The compiler hates us again:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="ex">[nix-shell]</span> cargo run</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="va">error</span><span class="op">[</span>E0594<span class="op">]</span><span class="ex">:</span> cannot assign to <span class="kw">`</span><span class="ex">counter</span><span class="kw">`</span>, as it is a captured variable in a <span class="kw">`</span><span class="ex">Fn</span><span class="kw">`</span> closure</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  <span class="ex">--</span><span class="op">&gt;</span> src/main.rs:37:17</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="ex">37</span> <span class="kw">|</span>                 <span class="ex">counter</span> += 1<span class="kw">;</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span>                 <span class="ex">^^^^^^^^^^^^</span> cannot assign</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a><span class="ex">help:</span> consider changing this to accept closures that implement <span class="kw">`</span><span class="ex">FnMut</span><span class="kw">`</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>  <span class="ex">--</span><span class="op">&gt;</span> src/main.rs:36:37</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span></span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a><span class="ex">36</span> <span class="kw">|</span>               <span class="ex">inc_btn.connect_clicked</span><span class="er">(</span><span class="ex">move</span> <span class="kw">|</span><span class="ex">_</span><span class="kw">|</span> <span class="kw">{</span></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span>  <span class="ex">_____________________________________^</span></span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a><span class="ex">37</span> <span class="kw">|</span> <span class="kw">|</span>                 <span class="ex">counter</span> += 1<span class="kw">;</span></span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a><span class="ex">38</span> <span class="kw">|</span> <span class="kw">|</span>                 <span class="ex">label_clone.set_label</span><span class="er">(</span><span class="st">&quot;Incremented&quot;</span><span class="kw">);</span></span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a><span class="ex">39</span> <span class="kw">|</span> <span class="kw">|</span>             <span class="kw">});</span></span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span> <span class="kw">|</span><span class="ex">_____________^</span></span></code></pre></div>
+<p>And this time with a bit trickier error it seems.</p>
+<p>I’m honestly not sure what compiler’s help is trying to tell us to do
+but I think it might be a good idea to encapsulate our mutation in something perhaps.
+After some digging in documentation I’ve found <a href="https://doc.rust-lang.org/std/sync/atomic/">std::sync::atomic</a> which seems like it might
+be a good tool for the job. There is even <a href="https://doc.rust-lang.org/std/sync/atomic/struct.AtomicIsize.html">AtomicIsize</a> but since it looks like this will
+make our “state management” a bit more verbose, let’s try to decouple it.</p>
+<p>We can also remove our <code>state : i32</code> as this won’t take us anywhere it seems.</p>
+<p>We’re still in the <code>main.rs</code> (because I can’t import and I’m lazy).
+In my case, I’m going to put this above the <code>main</code> procedure.</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode rust"><code class="sourceCode rust"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="kw">use</span> <span class="pp">std::sync::atomic::</span><span class="op">{</span>AtomicIsize<span class="op">,</span> Ordering<span class="op">};</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> Counter(AtomicIsize)<span class="op">;</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a><span class="kw">impl</span> Counter <span class="op">{</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">fn</span> new(init<span class="op">:</span> <span class="dt">isize</span>) <span class="op">-&gt;</span> Counter <span class="op">{</span></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>        Counter(<span class="pp">AtomicIsize::</span>new(init))</span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">fn</span> increment(<span class="op">&amp;</span><span class="kw">self</span>) <span class="op">-&gt;</span> <span class="dt">isize</span> <span class="op">{</span></span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>        <span class="kw">let</span> old <span class="op">=</span> <span class="kw">self</span><span class="op">.</span><span class="dv">0</span><span class="op">.</span>fetch_add(<span class="dv">1</span><span class="op">,</span> <span class="pp">Ordering::</span>SeqCst)<span class="op">;</span></span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>        old <span class="op">+</span> <span class="dv">1</span></span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>As you can see, we’re doing bunch of interesting things here.
+The essential idea is to use atomic operations to alter the state.
+If you’re interested in details, I recommend you study the documentation
+of <a href="https://doc.rust-lang.org/std/sync/atomic/">std::sync::atomic</a>. Now it’s a time to integrate our
+glorified integer into application starting with initialization of counter value.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode rust"><code class="sourceCode rust"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Containers</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> container <span class="op">=</span> <span class="dt">Box</span><span class="pp">::</span>new(<span class="pp">gtk::Orientation::</span>Vertical<span class="op">,</span> <span class="dv">3</span>)<span class="op">;</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a><span class="co">// State</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> counter <span class="op">=</span> <span class="pp">Counter::</span>new(<span class="dv">0</span>)<span class="op">;</span></span></code></pre></div>
+<p>And of course, click handler closure:</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode rust"><code class="sourceCode rust"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Content</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> inc_btn <span class="op">=</span> <span class="pp">Button::</span>new_with_label(<span class="st">&quot;Increment&quot;</span>)<span class="op">;</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span> label_clone <span class="op">=</span> label<span class="op">.</span>clone()<span class="op">;</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>    inc_btn<span class="op">.</span>connect_clicked(<span class="kw">move</span> <span class="op">|</span>_<span class="op">|</span> <span class="op">{</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>        <span class="kw">let</span> val <span class="op">=</span> counter<span class="op">.</span>increment()<span class="op">;</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>        label_clone<span class="op">.</span>set_label(<span class="op">&amp;</span><span class="pp">format!</span>(<span class="st">&quot;Incremented to {}&quot;</span><span class="op">,</span> val))<span class="op">;</span></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>We also put the actual value into the label when we’re at it.
+And since this works great, we go and extend this to work with decrement button as well.</p>
+<p>First, the new procedure to decrement the value:</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode rust"><code class="sourceCode rust"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="kw">fn</span> decrement(<span class="op">&amp;</span><span class="kw">self</span>) <span class="op">-&gt;</span> <span class="dt">isize</span> <span class="op">{</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span> old <span class="op">=</span> <span class="kw">self</span><span class="op">.</span><span class="dv">0</span><span class="op">.</span>fetch_sub(<span class="dv">1</span><span class="op">,</span> <span class="pp">Ordering::</span>SeqCst)<span class="op">;</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>    old <span class="op">-</span> <span class="dv">1</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>and then use it in decrement button clicked closure:</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode rust"><code class="sourceCode rust"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> dec_btn <span class="op">=</span> <span class="pp">Button::</span>new_with_label(<span class="st">&quot;Decrement&quot;</span>)<span class="op">;</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span> label_clone <span class="op">=</span> label<span class="op">.</span>clone()<span class="op">;</span></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>    dec_btn<span class="op">.</span>connect_clicked(<span class="kw">move</span> <span class="op">|</span>_<span class="op">|</span> <span class="op">{</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>        <span class="kw">let</span> val <span class="op">=</span> counter<span class="op">.</span>decrement()<span class="op">;</span></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>        label_clone<span class="op">.</span>set_label(<span class="op">&amp;</span><span class="pp">format!</span>(<span class="st">&quot;Decremented to {}&quot;</span><span class="op">,</span> val))<span class="op">;</span></span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>But wait what?</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a> <span class="ex">Compiling</span> rust-gtk-counter v0.1.0 <span class="er">(</span><span class="ex">/home/marek/Projects/rust-gtk-counter</span><span class="kw">)</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="va">error</span><span class="op">[</span>E0382<span class="op">]</span><span class="ex">:</span> use of moved value: <span class="kw">`</span><span class="ex">counter</span><span class="kw">`</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>  <span class="ex">--</span><span class="op">&gt;</span> src/main.rs:66:37</span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a><span class="ex">48</span> <span class="kw">|</span>         <span class="bu">let</span> <span class="va">counter</span> <span class="op">=</span> <span class="va">Counter</span><span class="op">::</span><span class="va">new</span><span class="er">(</span><span class="ex">0</span><span class="kw">);</span></span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span>             <span class="ex">-------</span> move occurs because <span class="kw">`</span><span class="ex">counter</span><span class="kw">`</span> has type <span class="kw">`</span><span class="ex">Counter</span><span class="kw">`</span>, which does not implement the <span class="kw">`</span><span class="ex">Copy</span><span class="kw">`</span> trait</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a><span class="ex">...</span></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a><span class="ex">58</span> <span class="kw">|</span>             <span class="ex">inc_btn.connect_clicked</span><span class="er">(</span><span class="ex">move</span> <span class="kw">|</span><span class="ex">_</span><span class="kw">|</span> <span class="kw">{</span></span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span>                                     <span class="ex">--------</span> value moved into closure here</span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a><span class="ex">59</span> <span class="kw">|</span>                 <span class="bu">let</span> <span class="va">val</span> <span class="op">=</span> <span class="va">counter</span>.increment<span class="er">(</span><span class="kw">);</span></span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span>                           <span class="ex">-------</span> variable moved due to use in closure</span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a><span class="ex">...</span></span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a><span class="ex">66</span> <span class="kw">|</span>             <span class="ex">dec_btn.connect_clicked</span><span class="er">(</span><span class="ex">move</span> <span class="kw">|</span><span class="ex">_</span><span class="kw">|</span> <span class="kw">{</span></span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span>                                     <span class="ex">^^^^^^^^</span> value used here after move</span>
+<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a><span class="ex">67</span> <span class="kw">|</span>                 <span class="bu">let</span> <span class="va">val</span> <span class="op">=</span> <span class="va">counter</span>.decrement<span class="er">(</span><span class="kw">);</span></span>
+<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span>                           <span class="ex">-------</span> use occurs due to use in closure</span>
+<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a><span class="ex">error:</span> aborting due to previous error</span></code></pre></div>
+<p>There is another problem with moving the value but it seems we might have a chance to fix it by simply
+deriving the <code>Copy</code> instance for our <code>Counter</code> struct, let’s see.</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode rust"><code class="sourceCode rust"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="at">#[</span>derive<span class="at">(</span><span class="bu">Copy</span><span class="at">)]</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> Counter(AtomicIsize)<span class="op">;</span></span></code></pre></div>
+<p>and try to compile it…</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="ex">[nix-shell]</span> cargo run</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a> <span class="ex">Compiling</span> rust-gtk-counter v0.1.0 <span class="er">(</span><span class="ex">/home/marek/Projects/rust-gtk-counter</span><span class="kw">)</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a><span class="va">error</span><span class="op">[</span>E0204<span class="op">]</span><span class="ex">:</span> the trait <span class="kw">`</span><span class="ex">Copy</span><span class="kw">`</span> may not be implemented for this type</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>  <span class="ex">--</span><span class="op">&gt;</span> src/main.rs:11:10</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span></span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a><span class="ex">11</span> <span class="kw">|</span> <span class="co">#[derive(Copy)]</span></span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span>          <span class="ex">^^^^</span></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a><span class="ex">12</span> <span class="kw">|</span> <span class="ex">struct</span> Counter<span class="er">(</span><span class="ex">AtomicIsize</span><span class="kw">);</span></span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>   <span class="kw">|</span>                <span class="ex">-----------</span> this field does not implement <span class="kw">`</span><span class="ex">Copy</span><span class="kw">`</span></span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a><span class="ex">error:</span> aborting due to previous error</span></code></pre></div>
+<p>Not that surprising. Our atomic type doesn’t implement <code>Copy</code>.
+This won’t take us anywhere, let’s try the last resort - the documentation.</p>
+<p>Luckily, std lib offers this reference counting primitive called <a href="https://doc.rust-lang.org/std/sync/struct.Arc.html">std::sync::Arc</a> which
+seems to offer the semantics we need.</p>
+<blockquote>
+<p>The type Arc&lt;T&gt; provides shared ownership of a value of type T, allocated in the heap.
+Invoking clone on Arc produces a new Arc instance, which points to the same value on the heap as the source Arc,
+while increasing a reference count. When the last Arc pointer to a given value is destroyed, the pointed-to value is also destroyed.</p>
+</blockquote>
+<p>We obviously want to point to the same memory if we want to be decrementing the same value we’re incrementing
+and reference counting will make sure this shared mutable state is available as long as it’s needed by anything
+just like if we had a GC.</p>
+<p>First, we need to change the definition of the <code>counter</code> variable:</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode rust"><code class="sourceCode rust"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co">// State</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="kw">use</span> <span class="pp">std::sync::</span>Arc<span class="op">;</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> counter <span class="op">=</span> <span class="pp">Arc::</span>new(<span class="pp">Counter::</span>new(<span class="dv">0</span>))<span class="op">;</span></span></code></pre></div>
+<p>so we can clone the <code>counter</code> in both closures (even though technically, cloning it in just one of them should be enough).</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode rust"><code class="sourceCode rust"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Content</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> inc_btn <span class="op">=</span> <span class="pp">Button::</span>new_with_label(<span class="st">&quot;Increment&quot;</span>)<span class="op">;</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span> label_clone <span class="op">=</span> label<span class="op">.</span>clone()<span class="op">;</span></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span> counter_clone <span class="op">=</span> counter<span class="op">.</span>clone()<span class="op">;</span></span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>    inc_btn<span class="op">.</span>connect_clicked(<span class="kw">move</span> <span class="op">|</span>_<span class="op">|</span> <span class="op">{</span></span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>        <span class="kw">let</span> val <span class="op">=</span> counter_clone<span class="op">.</span>increment()<span class="op">;</span></span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a>        label_clone<span class="op">.</span>set_label(<span class="op">&amp;</span><span class="pp">format!</span>(<span class="st">&quot;Incremented to {}&quot;</span><span class="op">,</span> val))<span class="op">;</span></span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> dec_btn <span class="op">=</span> <span class="pp">Button::</span>new_with_label(<span class="st">&quot;Decrement&quot;</span>)<span class="op">;</span></span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span> label_clone <span class="op">=</span> label<span class="op">.</span>clone()<span class="op">;</span></span>
+<span id="cb24-14"><a href="#cb24-14" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span> counter_clone <span class="op">=</span> counter<span class="op">.</span>clone()<span class="op">;</span></span>
+<span id="cb24-15"><a href="#cb24-15" aria-hidden="true" tabindex="-1"></a>    dec_btn<span class="op">.</span>connect_clicked(<span class="kw">move</span> <span class="op">|</span>_<span class="op">|</span> <span class="op">{</span></span>
+<span id="cb24-16"><a href="#cb24-16" aria-hidden="true" tabindex="-1"></a>        <span class="kw">let</span> val <span class="op">=</span> counter_clone<span class="op">.</span>decrement()<span class="op">;</span></span>
+<span id="cb24-17"><a href="#cb24-17" aria-hidden="true" tabindex="-1"></a>        label_clone<span class="op">.</span>set_label(<span class="op">&amp;</span><span class="pp">format!</span>(<span class="st">&quot;Decremented to {}&quot;</span><span class="op">,</span> val))<span class="op">;</span></span>
+<span id="cb24-18"><a href="#cb24-18" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb24-19"><a href="#cb24-19" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>And our awesome application compiles and runs again!</p>
+<h2 id="additional-cleaning">Additional Cleaning</h2>
+<p>This is really all the important stuff but there are some additional cosmetic details
+I just must do because of my OCD. So just quickly.</p>
+<p>First, the code. We should really read the initial state as well so let’s add the simple getter.</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode rust"><code class="sourceCode rust"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="kw">fn</span> get(<span class="op">&amp;</span><span class="kw">self</span>) <span class="op">-&gt;</span> <span class="dt">isize</span> <span class="op">{</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">self</span><span class="op">.</span><span class="dv">0</span><span class="op">.</span>load(<span class="pp">Ordering::</span>SeqCst)</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>And use it to display the initial title…</p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode rust"><code class="sourceCode rust"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Header</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> header <span class="op">=</span> <span class="pp">gtk::HeaderBar::</span>new()<span class="op">;</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> label <span class="op">=</span> <span class="pp">Label::</span>new(<span class="cn">Some</span>(<span class="op">&amp;</span><span class="pp">format!</span>(<span class="st">&quot;Starting at {}&quot;</span><span class="op">,</span> counter<span class="op">.</span>get())))<span class="op">;</span></span></code></pre></div>
+<p>And because we want everyone to be able to enjoy our glorious application, we can provide
+nix based build and installation. Create the new file called <code>default.nix</code> (or some prefer <code>release.nix</code>).</p>
+<div class="sourceCode" id="cb27"><pre class="sourceCode nix"><code class="sourceCode nix"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>  <span class="va">pkgs</span> <span class="op">=</span> <span class="op">(</span><span class="bu">import</span> &lt;nixpkgs&gt; <span class="op">{})</span>.fetchFromGitHub <span class="op">{</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>    <span class="va">owner</span> <span class="op">=</span> <span class="st">&quot;NixOS&quot;</span><span class="op">;</span></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>    <span class="va">repo</span> <span class="op">=</span> <span class="st">&quot;nixpkgs-channels&quot;</span><span class="op">;</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>    <span class="va">rev</span> <span class="op">=</span> <span class="st">&quot;b5f5c97f7d67a99b67731a8cfd3926f163c11857&quot;</span><span class="op">;</span></span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>    <span class="co"># nixos-unstable as of 2019-07-24T18:57:18-05:00</span></span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>    <span class="va">sha256</span> <span class="op">=</span> <span class="st">&quot;1m9xb3z3jxh0xirdnik11z4hw95bzdz7a4p3ab7y392345jk1wgm&quot;</span><span class="op">;</span></span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>  <span class="op">};</span></span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a><span class="kw">in</span></span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a><span class="kw">with</span> <span class="op">(</span><span class="bu">import</span> pkgs <span class="op">{});</span></span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a>rustPackages.rustPlatform.buildRustPackage <span class="kw">rec</span> <span class="op">{</span></span>
+<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a>  <span class="va">name</span> <span class="op">=</span> <span class="st">&quot;rust-gtk-counter-</span><span class="sc">${</span>version<span class="sc">}</span><span class="st">&quot;</span><span class="op">;</span></span>
+<span id="cb27-13"><a href="#cb27-13" aria-hidden="true" tabindex="-1"></a>  <span class="va">version</span> <span class="op">=</span> <span class="st">&quot;0.1.0&quot;</span><span class="op">;</span></span>
+<span id="cb27-14"><a href="#cb27-14" aria-hidden="true" tabindex="-1"></a>  <span class="va">src</span> <span class="op">=</span> <span class="ss">./.</span><span class="op">;</span></span>
+<span id="cb27-15"><a href="#cb27-15" aria-hidden="true" tabindex="-1"></a>  <span class="va">cargoSha256</span> <span class="op">=</span> <span class="st">&quot;0i4px1k23ymq7k3jp6y5g7dz0ysjzwrqqxfz4xg399y7zg5wwwhr&quot;</span><span class="op">;</span></span>
+<span id="cb27-16"><a href="#cb27-16" aria-hidden="true" tabindex="-1"></a>  <span class="va">nativeBuildInputs</span> <span class="op">=</span> <span class="op">[</span> pkgconfig <span class="op">];</span></span>
+<span id="cb27-17"><a href="#cb27-17" aria-hidden="true" tabindex="-1"></a>  <span class="va">buildInputs</span> <span class="op">=</span> <span class="op">[</span> cairo gtk3 glib pkgconfig <span class="op">];</span></span>
+<span id="cb27-18"><a href="#cb27-18" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Unlike in <code>shell.nix</code>, where we used the system’s global <code>&lt;nixpkgs&gt;</code>, here we use global ones only
+for <code>fetchFromGitHub</code> and fetch exact revision of nixpkgs to make sure that we get the same version of
+dependencies in the future.</p>
+<p>Now we can use (even outside of nix-shell) <code>$ nix-build</code> to build the whole project (and likely compile all the C as well as Rust from source)
+which will produce symlink named <code>result</code> in local directory pointing to compiled version of our package in <code>nix-store</code> linked
+to correct dependencies. <code>$ ./result/bin/rust-gtk-counter</code> should start the app. We should also add <code>result</code> to our <code>.gitignore</code>.
+You can even install the app to your nix-env with <code>$ nix-env -if .</code>
+because one never knows when (s)he will need to count from zero to some number. The app will then be installed as <code>rust-gtk-counter</code>.</p>
+<p>Since I have Mac as well, I can try that nix-build is working on MacOS as expected.</p>
+<p><img src="../assets/2019-07-28-mac-ui.png" /></p>
+<p>Enjoy glib compile time if you try this.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>I have to admit that I expected this whole process to be even slightly more challenging for someone with so little
+experience with both Rust and GTK as me. It was not all roses and rainbows though. I’ve definitely spent a lot of
+time reading documentation, trying to figure out what to use and how in order to get to the desired outcome.
+Also, our application is miles away from being advanced or even useful.</p>
+<p>I have to admit that Rust brings some reasonable trade-offs when it comes to building a GTK application.
+This doesn’t mean that it’s for free though. If you expect to write the code in the same way as you would do
+using some binding to language with GC (like Python or JavaScript) or probably even idiomatic GTK C, you’re
+likely to hit some walls on the way. If you decide to use Rust for GTK application development anyway,
+you might want to check <a href="https://github.com/antoyo/relm">relm</a> for higher level API before you start designing your own framework.
+If you’re a Haskeller, you should check the <a href="https://github.com/owickstrom/gi-gtk-declarative">gi-gtk-declarative</a> but be aware that <strong>both of those libraries are alpha</strong>.
+Also for you might want to check <a href="https://www.reddit.com/r/rust/comments/clkcba/building_gtk_app_in_rust_for_a_first_time/evx77ok/">mmstick’s comment</a> on Reddit and PopOS’ <a href="https://github.com/pop-os/firmware-manager">Firmware Manager</a> source to learn
+about more advanced pattern of designing GTK app in Rust.
+And last but not least if you’re using Windows definitely check <a href="https://github.com/xi-editor/druid">druid</a> which is a data oriented UI toolkit written in Rust.
+This is <a href="https://github.com/xi-editor/druid/blob/master/examples/hello.rs">the implementation of druid application similar to this one</a>.</p>
+<p>Will I use Rust to build some useful GTK application myself? Maybe I will! But I will definitely evaluate
+both Rust and some GC language (probably Haskell) and choose the more appropriate tool to do the job
+based on the business logic.</p>
+<p>The whole code is <a href="https://github.com/turboMaCk/rust-gtk-counter">available on GitHub</a>.</p>
+</main>
+
+
+<div class="reddit-discussion" id="discussion">
+  <img src="../assets/reddit.png" alt="redit" class="reddit-logo">
+  Since I'm not a fan of disqus or any other commenting system there is no disscusion under this post.<br>
+  However I do like reddit as a platform so feel free to shout here:<br>
+  <a href="https://www.reddit.com/r/rust/comments/clkcba/building_gtk_app_in_rust_for_a_first_time">r/rust/comments/clkcba/building_gtk_app_in_rust_for_a_first_time</a>
+</div>
+
+
+      </div>
+      <footer id="footer">
+        <a href="https://github.com/turboMaCk/turboMaCk.github.io">Source</a> available under BSD-3-Clause.<br>
+        Content is published under <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.<br>
+        Proudly powered by <a href="http://jaspervdj.be/hakyll">Hakyll</a>; Theme by Marek Fajkus<br>
+        <a href="../rss.xml">RSS 2.0</a> compatible<br>
+        This site is not tracking you.
+      </footer>
+    </main>
+
+    <!-- MathJax is library for displaying math nicely -->
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML" async></script>
+  </body>
+</html>

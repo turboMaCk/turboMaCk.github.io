@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="Description" content="My personal blog where I write mostly on topic of programming, especially function programming,
+                   system design and other things related to what I've learned, wanted to share or complain about
+                   within the discipline of software enginnering and informatics.">
+    <title>Anonymous types matter</title>
+    <link rel="icon" type="image/png" href="../favicon.png" />
+    <link rel="stylesheet" type="text/css" href="../css/default.css" />
+  </head>
+  <body>
+    <header class="page-header">
+        <nav class="navigation">
+            
+                <a href="../">Home</a>
+                <a href="../archive.html" class="active">B\og</a>
+            
+        </nav>
+    </header>
+
+    <main class="main-container">
+      <div class="content">
+        <h1>
+          Anonymous types matter
+          
+            <span class="subtitle">Anonymous tuples and records for designing APIs compatible by a structure, not a construction.</span>
+          
+        </h1>
+
+        
+<div class="tags">
+    Posted in: <a title="All pages tagged 'functional-programming'." href="../tags/functional-programming.html" rel="tag">functional-programming</a>, <a title="All pages tagged 'elm'." href="../tags/elm.html" rel="tag">elm</a>, <a title="All pages tagged 'haskell'." href="../tags/haskell.html" rel="tag">haskell</a>, <a title="All pages tagged 'purescript'." href="../tags/purescript.html" rel="tag">purescript</a>.
+</div>
+
+<div class="info">
+    Posted on May 12, 2020
+    
+</div>
+
+<main id="content">
+    <p>So I recently released another Elm library. I wished to have a library like this for a long
+time but I was hoping someone else will come up with the same design idea eventually.
+A few weeks ago I finally found enough motivation to do the tedious work and code it.
+Usually, I don’t write announcements to my releases but I think in this particular case
+the design idea might be a bit controversial so I think it’s worth the explanation.
+I want to keep this post relatively general so it’s not an announcement post neither.
+I just want to talk a bit about anonymous types.</p>
+<p>This post will be primarily about Elm but I’m going to compare it to Haskell and PureScript as well.
+It should be also simple to map these ideas to OCaml and F# (or any other language
+with similar type system ML, Rust, Idris..) if that’s your cup of tea.</p>
+<h2 id="what-is-an-anonymous-type">What is an Anonymous Type?</h2>
+<p>The term “<em>anonymous type</em>” is somewhat semi-technical. If you look up <a href="https://en.wikipedia.org/wiki/Anonymous_type">the Wikipedia article</a> you find
+some programming languages do include a feature named “<em>anonymous types</em>” though.
+So hopefully there are some similarities between these implementations.</p>
+<blockquote>
+<p>Anonymous types are a feature of C# 3.0, Visual Basic .NET 9.0, Oxygene, Scala, and Go that allows data types to encapsulate
+a set of properties into a single object without having to first explicitly define a type.</p>
+</blockquote>
+<p>If you look closer into how these features work you find out that it
+essentially allows a programmer to construct <code>record</code> <code>struct</code> or <code>object</code> value (depending on language terminology and features)
+without need to declare the corresponding type first.</p>
+<p>For purposes of this post, I’m actually going to generalize the definition to include all <a href="https://en.wikipedia.org/wiki/Product_type">product types</a>
+to potentially satisfy (or not) the condition of being anonymous.
+In particular, I mean that traditional tuple types from Haskell or ML are also anonymous types.</p>
+<div class="note">
+<p>If I should attempt to define what <em>Anonymous Type</em> is, the definition would be something like this:</p>
+<p><strong>Anonymous type is a product type whose values can be constructed without an explicit type declaration</strong>.
+Since all the information about the shape of product type can be inferred at the time of construction
+(which is not true about variant) type can be deduced directly from the value.
+This should also already suggest that anonymity is provided by the language itself, not by its libraries.</p>
+<p>This is not to be confused by type inference which is an ability to deduce the type of a value.
+However type inference still requires the type to be declared, it just doesn’t require
+a declaration of type on a value. For instance, in this example Elm code:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Object</span> <span class="op">=</span> <span class="dt">Earth</span> <span class="op">|</span> <span class="dt">Mars</span> <span class="op">|</span> <span class="dt">Moon</span> <span class="op">|</span> <span class="dt">Sun</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">destination</span> <span class="op">=</span> <span class="dt">Mars</span></span></code></pre></div>
+<p>the type of <code>destination</code> is inferred as <code>Object</code> but the declaration of an <code>Object</code> type is required.</p>
+<p>If you want to dive into much more advanced topic of anonymous variants, check
+<a href="http://comonad.com/reader/2008/the-cofree-comonad-and-the-expression-problem/">The Cofree Comonad and the Expression Problem</a> by Edward Kmett.</p>
+</div>
+<h2 id="anonymous-types-in-a-wild">Anonymous Types in a Wild</h2>
+<p>I will be primarily talking about records and tuples as I don’t want to attempt to solve <a href="https://en.wikipedia.org/wiki/Expression_problem">the expression problem</a> here.
+Perhaps I should also mention that <strong>I’m not going to talk about extensible records or row polymorphism.</strong>
+This post is about plain simple boring records and tuples.</p>
+<p>Since I don’t want to assume deep familiarity with all, or even just a single language I’m going to mention, I will use
+simple code examples for demonstrations. I’ve chosen Haskell Elm and PureScript as these
+are good examples I’m familiar with myself.</p>
+<div class="note">
+<p>Be aware that Elm has some (arguably confusing) naming inconsistency with Haskell and PureScript:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Language</th>
+<th>Data Type</th>
+<th>Unboxed Data Type</th>
+<th>Type Synonym</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Haskell</td>
+<td>data</td>
+<td>newtype</td>
+<td>type</td>
+</tr>
+<tr class="even">
+<td>PureScript</td>
+<td>data</td>
+<td>newtype</td>
+<td>type</td>
+</tr>
+<tr class="odd">
+<td>Elm</td>
+<td>type</td>
+<td>type (inferred)</td>
+<td>type alias</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="anonymous-tuples">Anonymous Tuples</h3>
+<p>A tuple is a sequence of elements. You can think about it as about struct in which values are accessed by index.
+It has a fixed size and each value in a slot has a specific type.</p>
+<p>In examples below, I’m also defining custom type just to make it obvious that tuple can hold any type of value
+even the one which is not known to the standard library.</p>
+<h4 id="haskell">Haskell</h4>
+<p>This is the Haskell syntax for defining a tuple (pair in this case):</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">MyData</span> <span class="ot">=</span> <span class="dt">MyData</span> {<span class="ot"> unMyData ::</span> <span class="dt">Int</span> }</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>myPair <span class="ot">=</span> (<span class="st">&quot;Foo&quot;</span>, <span class="dt">MyData</span> <span class="dv">42</span>)</span></code></pre></div>
+<p>If we run the <code>ghci</code> and load the module we can inspect the type of the value:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>λ <span class="op">:</span>l Tuples.hs</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>[<span class="dv">1</span> <span class="kw">of</span> <span class="dv">1</span>] <span class="dt">Compiling</span> <span class="dt">Main</span>             ( Tuples.hs, interpreted )</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="dt">Ok</span>, one <span class="kw">module</span> loaded<span class="op">.</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>λ <span class="op">:</span>t myPair</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="ot">myPair ::</span> ([<span class="dt">Char</span>], <span class="dt">MyData</span>)</span></code></pre></div>
+<p>This is the behavior we would expect from an anonymous type.
+We’re given syntax to construct tuple in any module which results
+in a value of compatible type.</p>
+<h4 id="elm">Elm</h4>
+<p>Elm has tuples very similar to the Haskell:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- Elm requires module definition</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Tuples</span> <span class="kw">exposing</span> (<span class="fu">myPair</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">MyData</span> <span class="op">=</span> <span class="dt">MyData</span> <span class="dt">Int</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="fu">myPair</span> <span class="op">=</span> (<span class="st">&quot;Foo&quot;</span><span class="op">,</span> <span class="dt">MyData</span> <span class="dv">42</span>)</span></code></pre></div>
+<p>To check the type we can fire repl again (use <code>elm repl</code> command. Be aware that the presence of <code>elm.json</code> file required):</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co">---- Elm 0.19.1 ----------------------------------------------------------------</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="dt">Say</span> :<span class="fu">help</span> <span class="fu">for</span> <span class="fu">help</span> <span class="fu">and</span> :<span class="fu">exit</span> <span class="fu">to</span> <span class="fu">exit</span><span class="op">!</span> <span class="dt">More</span> <span class="fu">at</span> <span class="op">&lt;</span><span class="fu">https</span>:<span class="op">//</span><span class="fu">elm</span><span class="op">-</span><span class="fu">lang</span><span class="op">.</span><span class="fu">org</span><span class="op">/</span><span class="dv">0</span><span class="op">.</span><span class="dv">19</span><span class="op">.</span><span class="dv">1</span><span class="op">/</span><span class="fu">repl</span><span class="op">&gt;</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="co">--------------------------------------------------------------------------------</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> <span class="kw">import</span> <span class="dt">Tuples</span> <span class="kw">exposing</span> (<span class="op">..</span>)</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> <span class="fu">myPair</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>(<span class="st">&quot;Foo&quot;</span><span class="op">,</span><span class="dt">MyData</span> <span class="dv">42</span>) : ( <span class="dt">String</span><span class="op">,</span> <span class="dt">MyData</span> )</span></code></pre></div>
+<p>This is the same situation as with Haskell.</p>
+<h4 id="purescript">PureScript</h4>
+<p>PureScript is interesting as it does ship only with minimal language support,
+but without the standard library. This design decision makes
+sense in a wider design context but it also means that PureScript
+doesn’t contain support for tuples in the core language.
+Tuples are provided by <a href="https://pursuit.purescript.org/packages/purescript-tuples/5.1.0">optional library</a> instead.</p>
+<div class="note">
+<p>I’m using <a href="https://github.com/purescript/spago">spago</a> as a build tool for PS (which is sort of similar to <a href="https://docs.haskellstack.org">stack</a> in Haskell world)
+because we need to manage dependencies in this case.</p>
+</div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Tuples</span> <span class="kw">where</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Data.Tuple</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">MyData</span> <span class="ot">=</span> <span class="dt">MyData</span> <span class="dt">Int</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>myPair <span class="ot">=</span> <span class="dt">Tuple</span> <span class="st">&quot;Foo&quot;</span> (<span class="dt">MyData</span> <span class="dv">42</span>)</span></code></pre></div>
+<p>Run <code>spago repl</code> to inspect the type:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>[info] <span class="dt">Installation</span> complete<span class="op">.</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="dt">PSCi</span>, version <span class="fl">0.13</span><span class="op">.</span><span class="dv">6</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="dt">Type</span> <span class="op">:?</span> for help</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Prelude</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> <span class="kw">import</span> <span class="dt">Tuples</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> <span class="op">:</span>t myPair</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="dt">Tuple</span> <span class="dt">String</span> <span class="dt">MyData</span></span></code></pre></div>
+<p>If we look into the definition of
+<code>Tuple</code>, we can see it’s a good old custom product type:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Tuple</span> a b <span class="ot">=</span> <span class="dt">Tuple</span> a b</span></code></pre></div>
+<p><code>Data.Tuple.Nested</code> provides a bunch of aliases and type and value operator (<code>/\</code>) for convenience.
+When importing this module, we can also define our pair as follows:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ot">myPair ::</span> <span class="dt">String</span> <span class="op">/</span>\ <span class="dt">MyData</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>myPair <span class="ot">=</span> <span class="st">&quot;Foo&quot;</span> <span class="op">/</span>\ <span class="dt">MyData</span> <span class="dv">42</span></span></code></pre></div>
+<p>In fact, this way of defining tuples is pretty close to <a href="https://en.wikipedia.org/wiki/Tuple">the mathematical definition</a>.</p>
+<p>Since tuples in PureScript are not first-class language construct, we definitely can’t consider them as being anonymous.
+Anyway, the PureScript implementation also nicely demonstrates how it
+is possible to emulate the absence of anonymous type within a language with parametric polymorphism.</p>
+<ul>
+<li>Define parametric custom type (eg. <code>Tuple a b</code>)</li>
+<li>Provide general functions to work with this type (<code>fst</code>, <code>snd</code>…)</li>
+<li>Make sure everybody is using the same this definition of type (community standard)</li>
+</ul>
+<p>I also want to point out that the absence of built-in tuples is not much of a problem in PureScript in practice.
+PureScript’s product types are all about records as we will see later.
+I personally still think that it’s good to have first-class tuples as in some cases, the positional
+nature of tuples works better than named keys of records. That being said, in most cases,
+however, records are nicer to work with.</p>
+<h3 id="records">Records</h3>
+<p>Record is another example of product type which we might want to make anonymous. Let’s look at the three languages again.</p>
+<h4 id="haskell-1">Haskell</h4>
+<p>The lack of anonymous records <a href="https://duckduckgo.com/?t=ffab&amp;q=haskell+records">is causing some headaches in Haskell for ages</a>. Some folks
+went even as far as solving at least parts that are solvable in user space
+(without compiler changes) in projects like <a href="https://hackage.haskell.org/package/record">record</a> or <a href="https://hackage.haskell.org/package/superrecord">superrecord</a>.</p>
+<p>Lets have a look at this idiomatic Haskell code:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">User</span> <span class="ot">=</span> <span class="dt">User</span> {<span class="ot"> name ::</span> <span class="dt">String</span>,<span class="ot"> age ::</span> <span class="dt">Int</span> }</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Project</span> <span class="ot">=</span> <span class="dt">Project</span> {<span class="ot"> name ::</span> <span class="dt">String</span>,<span class="ot"> description ::</span> <span class="dt">String</span> }</span></code></pre></div>
+<p>This fails with an error.</p>
+<pre class="shell"><code>Records.hs:2:26: error:
+    Multiple declarations of ‘name’
+    Declared at: Records.hs:1:20
+                 Records.hs:2:26
+  |
+2 | data Project = Project { name :: String, description :: String }
+  |                          ^^^^
+Failed, no modules loaded.
+</code></pre>
+<p>Haskell records are just regular custom product types like <code>data User = User String Int</code>.
+This is why record declaration is using <code>data</code>. Records are new data types not type synonyms.
+Record syntax just provides extra getter and setter functions.
+These functions are where <code>multiple declarations</code> problem happens – Haskell wants to generate two <code>name</code>
+accessors and these collide.</p>
+<p>To fix this problem, we need to <code>:set -XDuplicateRecordFields</code>.
+Anyway if we do so we lose the ability to use getter and setter functions:</p>
+<pre class="shell"><code>λ :t name
+
+&lt;interactive&gt;:1:1: error:
+    Ambiguous occurrence ‘name’
+    It could refer to
+       either the field ‘name’, defined at Records.hs:2:26
+           or the field ‘name’, defined at Records.hs:1:20
+</code></pre>
+<p>So in order to make records usable, we need to allow other extensions like <code>-XRecordWildCards</code>.</p>
+<p>Since there are so many extensions and recommended practices around Haskell’s records,
+I can’t possibly talk or even list all of them. Feel free to refer to these articles for more information though:</p>
+<ul>
+<li>24 Days of GHC Extensions: <a href="https://ocharles.org.uk/blog/posts/2014-12-04-record-wildcards.html">Record Wildcards</a> by Ollie Charles</li>
+<li><a href="https://kodimensional.dev/recordwildcards">The Power of RecordWildCards</a> by Dmitrii Kovanikov</li>
+<li>GHC docs <a href="https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/disambiguate_record_fields.html">DisambiguateRecordFields</a></li>
+<li><a href="https://www.athiemann.net/2017/07/02/superrecord.html">SuperRecord: Anonymous Records for Haskell</a> by Alexander Thiemann</li>
+</ul>
+<p>Idiomatic Haskell’s records are definitely not anonymous though. Common usage of <a href="https://en.wikipedia.org/wiki/Hungarian_notation">Hungarian notation</a> is an ever-present reminder
+that of Haskell’s relation to <a href="https://www.microsoft.com/en-us/research/people/simonpj/">Microsoft research</a> [insert troll face].</p>
+<h4 id="elm-1">Elm</h4>
+<p>In Elm, on the other hand, we can easily do this.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Records</span> <span class="kw">exposing</span> (<span class="op">..</span>)</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="kw">alias</span> <span class="dt">User</span> <span class="op">=</span> { <span class="fu">name</span> : <span class="dt">String</span><span class="op">,</span> <span class="fu">age</span> : <span class="dt">Int</span> }</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="kw">alias</span> <span class="dt">Project</span> <span class="op">=</span> { <span class="fu">name</span> : <span class="dt">String</span><span class="op">,</span> <span class="fu">description</span> : <span class="dt">String</span> }</span></code></pre></div>
+<p>As you can see, these records are defined as synonyms (aliases) to “already existing” record type.
+We, in fact, don’t even need to declare these aliases at all:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> <span class="fu">foo</span> <span class="op">=</span> { <span class="fu">asdf</span> <span class="op">=</span> <span class="st">&quot;asdf&quot;</span><span class="op">,</span> <span class="fu">lkj</span> <span class="op">=</span> <span class="op">-</span><span class="dv">1</span> }</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>{ <span class="fu">asdf</span> <span class="op">=</span> <span class="st">&quot;asdf&quot;</span><span class="op">,</span> <span class="fu">lkj</span> <span class="op">=</span> <span class="op">-</span><span class="dv">1</span> }</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>    : { <span class="fu">asdf</span> : <span class="dt">String</span><span class="op">,</span> <span class="fu">lkj</span> : <span class="fu">number</span> }</span></code></pre></div>
+<p>If we define record alias though, we get a value constructor for free:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> <span class="dt">User</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="op">&lt;</span><span class="fu">function</span><span class="op">&gt;</span> : <span class="dt">String</span> <span class="op">-&gt;</span> <span class="dt">Int</span> <span class="op">-&gt;</span> <span class="dt">User</span></span></code></pre></div>
+<p>Further more, Elm gives us polymorphic getters (and setters):</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> <span class="op">.</span><span class="fu">name</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="op">&lt;</span><span class="fu">function</span><span class="op">&gt;</span> : { <span class="fu">b</span> <span class="op">|</span> <span class="fu">name</span> : <span class="fu">a</span> } <span class="op">-&gt;</span> <span class="fu">a</span></span></code></pre></div>
+<p><code>.name</code> as well as <code>{record}.name</code> will work with any records which has name field what ever its type might be.
+This is much like a <code>fst</code> or <code>Tupple.first</code> functions but it also with named rather than positional keys.
+Don’t confuse this with maps with string based keys (so common in dynamic languages). This is nothing
+like map with string because records have known shape. Querying record for key it doesn’t have is a type error.</p>
+<p>Elm’s records are anonymous. They are also so-called <a href="https://www.microsoft.com/en-us/research/publication/extensible-records-with-scoped-labels/">extensible records</a>.
+<a href="https://elm.christmas/2018/19">You won’t believe what these records can do!</a> article by Jonas Berdal goes deeper into this.</p>
+<h4 id="purescript-1">PureScript</h4>
+<p>I already said that records are a big deal in PureScript, so let’s just dive right into it.
+This is the idiomatic declaration of a specific record type.</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Records</span> <span class="kw">where</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">User</span> <span class="ot">=</span> {<span class="ot"> name ::</span> <span class="dt">String</span>,<span class="ot"> age ::</span> <span class="dt">Int</span> }</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Project</span> <span class="ot">=</span> {<span class="ot"> name ::</span> <span class="dt">String</span>,<span class="ot"> description ::</span> <span class="dt">String</span> }</span></code></pre></div>
+<p>Unlike Haskell (without language extension) and like Elm, this code is perfectly fine.
+Also, you can see that records declaration uses keyword for a synonym (similar to Elm).</p>
+<p>We, of course, don’t need to declare synonyms unless we want to:</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> foo <span class="ot">=</span> { asdf <span class="op">:</span> <span class="st">&quot;asdf&quot;</span>, lkj <span class="op">:</span> <span class="op">-</span><span class="dv">1</span> }</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> <span class="op">:</span>t foo</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>{<span class="ot"> asdf ::</span> <span class="dt">String</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>,<span class="ot"> lkj ::</span> <span class="dt">Int</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>In PureScript, aliases won’t give us function constructors (<code>User : String -&gt; Int -&gt; User</code>) like they did in Elm.
+Instead, there is special syntax for declaring value constructor we can use even without declaration of synonym:</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="op">:</span>t { foo <span class="op">:</span> _, bar <span class="op">:</span> _ }</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="kw">forall</span> t1 t2<span class="op">.</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>  t1</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>  <span class="ot">-&gt;</span> t2</span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>     <span class="ot">-&gt;</span> {<span class="ot"> bar ::</span> t2</span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>        ,<span class="ot"> foo ::</span> t1</span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>        }</span></code></pre></div>
+<p>We also don’t get <code>.name</code> style getters so we need to use <code>{record}.{field}</code> syntax:</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> { name <span class="op">:</span> <span class="st">&quot;Jane Doe&quot;</span>}<span class="op">.</span>name</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Jane Doe&quot;</span></span></code></pre></div>
+<p>PureScript records have even more powers provided by <a href="https://en.wikipedia.org/wiki/Row_polymorphism">row polymorphism</a> abilities of the language.
+You can check <a href="https://qiita.com/kimagure/items/ca229cb4ba76db0c24a8">Making Diffs of differently-typed Records in PureScript</a> article by Justin Woo
+if you’re keen to learn more.</p>
+<h3 id="overview">Overview</h3>
+<p>Based on our findings we can compile this overview of three languages:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Language</th>
+<th>Anonymous Tuples</th>
+<th>Anonymous Records</th>
+<th>Other Records Feature</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Haskell</td>
+<td>yes</td>
+<td>no</td>
+<td>via extensions</td>
+</tr>
+<tr class="even">
+<td>Elm</td>
+<td>yes</td>
+<td>yes</td>
+<td>extensibility</td>
+</tr>
+<tr class="odd">
+<td>PureScript</td>
+<td>no</td>
+<td>yes</td>
+<td>row polymorphism</td>
+</tr>
+</tbody>
+</table>
+<h2 id="so-why-anonymous-types-matter">So Why Anonymous Types Matter?</h2>
+<p>Anonymous types fill certain needs in software design pretty well.
+This goes back to the open/closed principles <a href="./2019-08-14-avoiding-pattern-matching-refunctionalization.html">I wrote about some time ago</a>.</p>
+<p>In all three languages, we have the whole spectrum of features that help to craft APIs
+with the right properties.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Opened/Closed</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Opaque type</td>
+<td>strictly closed</td>
+<td>Type can’t be constructed and deconstructed outside of the module</td>
+</tr>
+<tr class="even">
+<td>Custom ADT</td>
+<td>closed</td>
+<td>Type is defined in a specific module which id required for working with type</td>
+</tr>
+<tr class="odd">
+<td>Common ADT</td>
+<td>almost opened</td>
+<td>Like custom ADT just expected to universally available (part of stdlib etc)</td>
+</tr>
+<tr class="even">
+<td>Anonymous type</td>
+<td>opened</td>
+<td>Completely independent of its definition, compatible by a structure</td>
+</tr>
+</tbody>
+</table>
+<p>Depending on the nature of the API, different level of openness/closeness might be appropriate.</p>
+<p>The three languages we have looked into, while being generally fairly similar, have some obvious differences.
+This is why the best API for a problem might often look a bit different across the three.</p>
+<p>For example, <code>uncons</code> function has different API in PureScript because it’s desirable to return anonymous product type.
+It also seems to be preferable to use positional tuple over the record provided language does have anonymous tuple (at least Elm which has choice
+uses tuple).</p>
+<ul>
+<li>Elm (elm-community/list-extra): <code>uncons : List a -&gt; Maybe ( a, List a )</code></li>
+<li>PureScript (purescript-lists) : <code>uncons :: forall a. List a -&gt; Maybe { head :: a, tail :: List a }</code></li>
+<li>Haskell <code>uncons :: [a] -&gt; Maybe (a, [a])</code></li>
+</ul>
+<p>An example where both Elm and PureScript might favor record (and Haskell is likely using just multiple arguments) is in
+functions with a bit more complicated API. In these cases, records can work as a substitution for named arguments (which Haskell does not, but OCaml does).
+Using records with named fields brings additional semantic clarity, making it easier to understand the API.
+An example might be a function that performs HTTP requests.</p>
+<h2 id="non-empty-list-as-synonym">Non-Empty List as Synonym</h2>
+<p>About a week ago, I published <a href="https://package.elm-lang.org/packages/turboMaCk/non-empty-list-alias/latest/">non-empty-list-alias library</a> for Elm.
+In my opinion, there are several benefits of defining non-empty list
+in terms of <code>(a, List a)</code>. Especially in Elm.</p>
+<p>Currently, it’s common to define non-empty list as custom <code>type NonEmpty a = Cons a (List a)</code>.
+This is what all existing libraries do.
+It is also how <a href="https://hackage.haskell.org/package/base-4.14.0.0/docs/Data-List-NonEmpty.html#g:1">Data.List.NonEmpty</a> in Haskell’s base is defined.</p>
+<p>I think synonym definition is especially well suited in Elm because:</p>
+<ol type="1">
+<li>Elm doesn’t have <a href="https://en.wikipedia.org/wiki/Ad_hoc_polymorphism">ad hoc polymorphism</a> – Unlike in Haskell and PureScript, we can’t make non empty instance of any type-class.</li>
+<li>elm/core doesn’t come with a definition of NonEmpty – There is no single implementation of this type everyone is expected to use.</li>
+<li>It’s easy enough to work directly with tuple – It’s virtually free to opt-in and out of such a library.</li>
+<li><code>elm-community/list-extra</code> already provides <code>uncons</code> – this function is a compatible constructor with this definition.</li>
+</ol>
+<p>That’s not to say there wouldn’t be any benefits in having a similar definition in a language like Haskell.
+<a href="https://twitter.com/fried_brice/status/1232773993507147776">There are folks who would prefer such definition</a>. I think in the case of Elm, the case is even stronger.</p>
+<p>That being said, I’m well aware of downsides of this approach:</p>
+<ol type="1">
+<li>Less semantically expressive constructor (in pattern matching)</li>
+<li>Potentially encouraging even more fragmentation in implementations (or diversity, depends on where you stand).</li>
+</ol>
+<p>The library also comes with a <a href="https://en.wikipedia.org/wiki/Zipper_(data_structure)">zipper</a> module.
+Unlike the <code>NonEmpty</code>, the <a href="https://package.elm-lang.org/packages/turboMaCk/non-empty-list-alias/latest/List-NonEmpty-Zipper"><code>Zipper</code></a> type is opaque.
+Zipper type contains private data field users are not supposed to be able to mess with –
+therefore the opaque type is the right choice in this case.</p>
+<p>Both <code>NonEmpty</code> and <code>Zipper</code> modules come with full-featured implementations, including but not limited to
+<a href="https://en.wikipedia.org/wiki/Functor">Functor</a> <a href="https://en.wikipedia.org/wiki/Applicative_functor">Applicative Functor</a> and <a href="https://en.wikipedia.org/wiki/Monad_(category_theory)">Comonad</a> functions.</p>
+<p>If you want to learn more, there are some links:</p>
+<ul>
+<li><a href="https://package.elm-lang.org/packages/turboMaCk/non-empty-list-alias/latest/">Documentation</a></li>
+<li><a href="https://github.com/turboMaCk/non-empty-list-alias">Repository</a></li>
+</ul>
+<h2 id="conclusion">Conclusion</h2>
+<p>I’m pretty sure there are and will always be some folks who won’t like to give up the semantically
+more expressive definition of custom constructors. And I think that’s fine as long
+as we all understand the trade-off. Both alias to pair and custom ADTs
+are isomorphic anyway, so it’s just a matter of practicality in the end.
+I’m personally often willing to sacrifice some expressiveness to make APIs a bit easier to work with myself.</p>
+<p>Anonymous types do change the ergonomics of a language and APIs which exploit their power.
+For what it’s worth, I think that we should always think about what is an appropriate level of openness or closeness
+when designing APIs. Especially if language offers a bunch of them.</p>
+</main>
+
+
+<div class="reddit-discussion" id="discussion">
+  <img src="../assets/reddit.png" alt="redit" class="reddit-logo">
+  Since I'm not a fan of disqus or any other commenting system there is no disscusion under this post.<br>
+  However I do like reddit as a platform so feel free to shout here:<br>
+  <a href="https://www.reddit.com/r/elm/comments/givnx0/anonymous_types_matter_non_empty_list_as_a_list_a">r/elm/comments/givnx0/anonymous_types_matter_non_empty_list_as_a_list_a</a>
+</div>
+
+
+      </div>
+      <footer id="footer">
+        <a href="https://github.com/turboMaCk/turboMaCk.github.io">Source</a> available under BSD-3-Clause.<br>
+        Content is published under <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.<br>
+        Proudly powered by <a href="http://jaspervdj.be/hakyll">Hakyll</a>; Theme by Marek Fajkus<br>
+        <a href="../rss.xml">RSS 2.0</a> compatible<br>
+        This site is not tracking you.
+      </footer>
+    </main>
+
+    <!-- MathJax is library for displaying math nicely -->
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML" async></script>
+  </body>
+</html>

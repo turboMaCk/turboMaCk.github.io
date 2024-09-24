@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="Description" content="My personal blog where I write mostly on topic of programming, especially function programming,
+                   system design and other things related to what I've learned, wanted to share or complain about
+                   within the discipline of software enginnering and informatics.">
+    <title>Cabal Flags With and Without Nix</title>
+    <link rel="icon" type="image/png" href="../favicon.png" />
+    <link rel="stylesheet" type="text/css" href="../css/default.css" />
+  </head>
+  <body>
+    <header class="page-header">
+        <nav class="navigation">
+            
+                <a href="../">Home</a>
+                <a href="../archive.html" class="active">B\og</a>
+            
+        </nav>
+    </header>
+
+    <main class="main-container">
+      <div class="content">
+        <h1>
+          Cabal Flags With and Without Nix
+          
+            <span class="subtitle">Hakyll build environment with watcher and preview server using nix</span>
+          
+        </h1>
+
+        
+<div class="tags">
+    Posted in: <a title="All pages tagged 'haskell'." href="../tags/haskell.html" rel="tag">haskell</a>, <a title="All pages tagged 'nix'." href="../tags/nix.html" rel="tag">nix</a>.
+</div>
+
+<div class="info">
+    Posted on February 17, 2020
+    
+</div>
+
+<main id="content">
+    <p><a href="https://en.wiktionary.org/wiki/yak_shaving">Yak shaving</a> for every day. I wanted to write post about something completely
+different but I needed to shave a beast and figured I can as well share “a quick how to”
+in hope I might safe someone else’s time.</p>
+<p>I’ve been using <a href="https://nixos.org">NixOS</a> exclusively on basically all of my machines.
+I also like to abuse nix for all sort of stuff - for creating project environments using
+<a href="https://nixos.org/nix/manual/#sec-nix-shell">nix-shell</a>, deployment etc. Anyway as it is pretty common at least in my case, the software
+gods were pretty angry with me again. Even though I have this site “<em>nixified</em>” for over a year
+<strong>it turned out Hakyll in nixpkgs is not built with <code>previewServer</code> and <code>watchServer</code> which I would
+pretty much like to use.</strong></p>
+<div class="updates">
+<p><a href="https://github.com/NixOS/cabal2nix/issues/442">Discussion under issue 442 in cabal2nix</a> shed a bit more light onto the issues described
+within this post.
+The issue with</p>
+<ol type="1">
+<li>There are good reasons why <code>doJailbreak</code> ignores conditional dependencies. See <a href="https://github.com/peti/jailbreak-cabal/issues/7#issuecomment-87445882">this comment for more informations</a>.</li>
+<li>The reason why Hakyll in nixpkgs is not built with default <code>previewServer</code> and <code>watchServer</code> is due to Cabal Install. Nixpkgs set doesn’t contain compatible version of <code>warp</code> package so <code>Hakyll</code> can’t be built with those flags. In situations like this Cabal simply silently ignores the flag. This behaviour seems at best odd to me. There is currently some <a href="https://github.com/NixOS/cabal2nix/issues/442#issuecomment-595954664">dicussion about making flags explicit</a>. Change like this might make maintenance of nixpkgs a bit more difficult so we will see how this goes.</li>
+</ol>
+</div>
+<h2 id="cabal-flags">Cabal Flags</h2>
+<p>Lets start by familiarizing ourselves with <a href="https://www.haskell.org/cabal/release/cabal-1.10.1.0/doc/users-guide/#example-a-package-containing-a-library-and-executable-programs-1">Cabal Flags</a> first.
+Cabal allows user to define custom build configuration flags within cabal file.
+Declaration of custom flags is usually in top section of Cabal file. <strong>Flag has to be <code>Bool</code> value</strong>
+and can be both <code>True</code> or <code>False</code> by default.</p>
+<p>Looking into <a href="https://github.com/jaspervdj/hakyll/blob/a312fd4972f9add0736a9f8335bcd51e0e163b06/hakyll.cabal#L88-L108">hakyll.cabal</a> we can see two flags <code>watchServer</code> and <code>previewServer</code>.
+Interestingly enough, both are set to <code>True</code> by default. This is can configure
+to overwrite default flags:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> cabal configure <span class="at">-f</span> watchServer <span class="at">-f</span> previewServer</span></code></pre></div>
+<div class="note">
+<p>Frankly it was more difficult for me to found this information than I think it should have been.
+It’s hard to point a finger to why so. Maybe it’s hard to navigate cabal documentation,
+maybe the error message Hakyll logs when it’s missing a flag is not helpful enough or maybe it
+was purely my own stupidity. Anyway Hackage lists available flags on <a href="https://hackage.haskell.org/package/hakyll-4.13.0.1">package description page</a> including
+a link to <a href="https://www.haskell.org/cabal/users-guide/installing-packages.html#controlling-flag-assignments">relevant part of documentation of cabal</a> so it’s not like folks didn’t try to be helpful.</p>
+</div>
+<h2 id="haskell-infrastructure-for-nix">Haskell Infrastructure for Nix</h2>
+<p>Like <a href="https://docs.haskellstack.org/en/stable/README/">Stack</a>, <a href="https://nixos.org/nixpkgs/">nixpkgs</a> provide curated Haskell package sets but with both flexibility
+and user experience (meaning complexity) of Nix. <a href="https://hackage.haskell.org/package/cabal2nix">Cabal2Nix</a> is a standard tool
+for generating Nix expressions for Cabal projects.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> cabal2nix . <span class="op">&gt;</span> site.nix</span></code></pre></div>
+<div class="note">
+<p>If you don’t want to pre-generate nix expressions you can as well use
+<code>haskellPackages.cabal2nix "site" ./.</code> as a part of build rather than generating it upfront.</p>
+</div>
+<p>There are two gotchas though. First Hakyll within nix packages is build with <code>watchServer</code> and <code>previewServer</code>
+disabled so these features are not available, second the standard <code>jailbreak</code><a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> seems not to be compatible with cabal
+flags.</p>
+<h3 id="overriding-hakyll">Overriding Hakyll</h3>
+<p>To fix these two problems we’re going to override the definition of Hakyll.
+For general structure of <code>default.nix</code> file I’m roughly following Gabriel’s <a href="https://github.com/Gabriel439/haskell-nix">haskell-nix</a>
+way which looks like this:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode nix"><code class="sourceCode nix"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="va">config</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="va">packageOverrides</span> <span class="op">=</span> <span class="va">pkgs</span><span class="op">:</span> <span class="op">{</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>      <span class="va">haskellPackages</span> <span class="op">=</span> pkgs.haskellPackages.override <span class="op">{</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>        <span class="va">overrides</span> <span class="op">=</span> <span class="va">haskellPackagesNew</span><span class="op">:</span> <span class="va">haskellPackagesOld</span><span class="op">:</span> <span class="op">{</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>          <span class="va">site</span> <span class="op">=</span> haskellPackagesNew.callPackage <span class="ss">./site.nix</span> <span class="op">{};</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>        <span class="op">};</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>      <span class="op">};</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">};</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  <span class="op">};</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  <span class="va">pkgs</span> <span class="op">=</span> <span class="bu">import</span> &lt;nixpkgs&gt; <span class="op">{</span> <span class="kw">inherit</span> config<span class="op">;</span> <span class="op">};</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="kw">in</span> pkgs.haskellPackages.site;</span></code></pre></div>
+<p>This will extend default package set with my custom <code>site</code> package.</p>
+<p>Next thing we need to do is to add overrides for Hakyll. We’re going to use
+version already available to us in haskellPackages and just apply desired changes.
+For start we need to configure projects with <code>watchServer</code> and <code>previewServer</code> flags:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode nix"><code class="sourceCode nix"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">#...</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>      haskellPackages = pkgs.haskellPackages.override <span class="op">{</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>        <span class="va">overrides</span> <span class="op">=</span> <span class="va">haskellPackagesNew</span><span class="op">:</span> <span class="va">haskellPackagesOld</span><span class="op">:</span> <span class="op">{</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>          <span class="va">hakyll</span> <span class="op">=</span> haskellPackagesOld.hakyll.overrideAttrs<span class="op">(</span><span class="va">old</span><span class="op">:</span> <span class="op">{</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>            <span class="va">configureFlags</span> <span class="op">=</span> <span class="st">&quot;-f watchServer -f previewServer&quot;</span><span class="op">;</span> <span class="co"># pass configure flags</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>            <span class="va">jailbreak</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span> <span class="co"># jailbreak dependecies</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>          <span class="op">});</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>          <span class="va">site</span> <span class="op">=</span> haskellPackagesNew.callPackage <span class="ss">./site.nix</span> <span class="op">{};</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>        <span class="op">};</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>      <span class="op">}</span>;</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="co">#...</span></span></code></pre></div>
+<p>This is as far as I know not documented but it’s easy enough to reverse engineer from the <a href="https://github.com/NixOS/nixpkgs/blob/3285f0f2ff36aea7d5e87520a3e9ef66c44f87b8/pkgs/development/haskell-modules/generic-builder.nix#L21">generir-builder.nix</a>.</p>
+<p>At this stage build fails for me though because of unavailable version of <a href="https://hackage.haskell.org/package/warp">warp</a>.
+I assume this is because <code>jailbreak</code> doesn’t work correctly with flag directive.</p>
+<p>To solve this problem I’m going to define custom patch for Hakyll.
+I usually use git to produce patches.</p>
+<ol type="1">
+<li>git clone the repository</li>
+<li>do desired changes to source locally</li>
+<li>run <code>git diff &gt; file.patch</code> to produce patch file</li>
+</ol>
+<p><strong><a href="https://github.com/turboMaCk/turboMaCk.github.io/blob/33a9435e81e241ec2ea6251101e35b9a522e2793/hakyll.patch">Patch file</a> I’m using.</strong></p>
+<p>The simplest way to apply custom patches in nix expression is to use <code>patches</code> attribute as follows:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode nix"><code class="sourceCode nix"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co">#...</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>      haskellPackages = pkgs.haskellPackages.override <span class="op">{</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>        <span class="va">overrides</span> <span class="op">=</span> <span class="va">haskellPackagesNew</span><span class="op">:</span> <span class="va">haskellPackagesOld</span><span class="op">:</span> <span class="op">{</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>          <span class="va">hakyll</span> <span class="op">=</span> haskellPackagesOld.hakyll.overrideAttrs<span class="op">(</span><span class="va">old</span><span class="op">:</span> <span class="op">{</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>            <span class="va">configureFlags</span> <span class="op">=</span> <span class="st">&quot;-f watchServer -f previewServer&quot;</span><span class="op">;</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>            <span class="va">patches</span> <span class="op">=</span> <span class="op">[</span><span class="ss">./hakyll.patch</span><span class="op">];</span> <span class="co"># applying our custom patch</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>          <span class="op">});</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>          <span class="va">site</span> <span class="op">=</span> haskellPackagesNew.callPackage <span class="ss">./site.nix</span> <span class="op">{};</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>        <span class="op">};</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>      <span class="op">}</span>;</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="co">#...</span></span></code></pre></div>
+<p>Now we have build for our <code>site</code> binary using the customized version of Hakyll
+with support for <code>watch</code> command.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>More than anything this demonstrates how frustrating it sometimes can be to use software.
+I wanted to blog about something but ended up fixing build and then writing this tutorial instead.
+A big part of using software is about putting through with
+things like this. There is always some trade-off with tools and approaches we use.
+For me personally it’s important above all to be able to go and fix issues myself without going completely crazy
+in the process. Both Haskell and Nix are good tools for this. On the other hand neither of them
+is the most effective way of avoiding problems like in first place.</p>
+<p>I’m not going to rant about the state of the software.
+Neither I’m going to praise tools I use. I’m writing this post with two goals:</p>
+<ol type="1">
+<li>As a mostly copy paste tutorial for folks who might run into similar issues.</li>
+<li>As an exercise for reader to see both power and cost of getting things done with tools like these.</li>
+</ol>
+<p><strong><strong>Whole code can be found on <a href="https://github.com/turboMaCk/turboMaCk.github.io/tree/33a9435e81e241ec2ea6251101e35b9a522e2793">GitHub</a></strong></strong></p>
+<section id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1"><p><code>jailbreak</code> attribute or <code>doJailbreak</code> function are used to remove version constrains from cabal file
+so package can be build with other version of dependencies present in used haskellPackages set.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>
+</main>
+
+
+
+      </div>
+      <footer id="footer">
+        <a href="https://github.com/turboMaCk/turboMaCk.github.io">Source</a> available under BSD-3-Clause.<br>
+        Content is published under <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.<br>
+        Proudly powered by <a href="http://jaspervdj.be/hakyll">Hakyll</a>; Theme by Marek Fajkus<br>
+        <a href="../rss.xml">RSS 2.0</a> compatible<br>
+        This site is not tracking you.
+      </footer>
+    </main>
+
+    <!-- MathJax is library for displaying math nicely -->
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML" async></script>
+  </body>
+</html>

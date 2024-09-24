@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="Description" content="My personal blog where I write mostly on topic of programming, especially function programming,
+                   system design and other things related to what I've learned, wanted to share or complain about
+                   within the discipline of software enginnering and informatics.">
+    <title>Avoiding Pattern Matching</title>
+    <link rel="icon" type="image/png" href="../favicon.png" />
+    <link rel="stylesheet" type="text/css" href="../css/default.css" />
+  </head>
+  <body>
+    <header class="page-header">
+        <nav class="navigation">
+            
+                <a href="../">Home</a>
+                <a href="../archive.html" class="active">B\og</a>
+            
+        </nav>
+    </header>
+
+    <main class="main-container">
+      <div class="content">
+        <h1>
+          Avoiding Pattern Matching
+          
+            <span class="subtitle">Regaining open composability with refunctionalization</span>
+          
+        </h1>
+
+        
+<div class="tags">
+    Posted in: <a title="All pages tagged 'elm'." href="../tags/elm.html" rel="tag">elm</a>, <a title="All pages tagged 'functional-programming'." href="../tags/functional-programming.html" rel="tag">functional-programming</a>.
+</div>
+
+<div class="info">
+    Posted on August 14, 2019
+    
+</div>
+
+<main id="content">
+    <p>A few days ago, my colleague <a href="https://twitter.com/janiczek">Martin Janiczek</a> published a post on his blog called
+<a href="http://martin.janiczek.cz/clanek/defunctionalization-in-elm/">Defunctionalization in Elm</a>. In the post, he talks about applying technique from <a href="http://www.jameskoppel.com/">James Koppel</a>’s talk
+<a href="https://www.youtube.com/watch?v=vNwukfhsOME">The Best Refactoring You’ve Never Heard Of</a>.</p>
+<p>The talk itself describes a sort of isomorphism between continuations and data and
+a way to refactor between the two. This is probably not as life changing information
+for experienced functional programmers as it might be for people with only imperative
+programming background but I recommend you to watch this talk especially because it
+establishes a good base and terminology for talking about this relationship.</p>
+<p>The talk also describes a relation between CSP and iteration, which is what I wanted to talk about in the last part
+of my “Deeper Dive To (Tail) Recursion” series of write-ups that I haven’t finished
+as my focus shifted. You can find <a href="./2017-02-12-recursion.html">part 1</a> and <a href="./2017-04-09-tail-recursion.html">part 2</a> in <a href="../archive.html">archive</a>.</p>
+<p>I’m personally not a fan of “over-usage” of sum types and pattern matching and I disagree
+that changes Martin describes in his post are better than the original code.
+But I haven’t planned to write a post about this until
+another friend of mine asked me if I can write something about the topic we’ve discussed together
+on several occations — <em>Why I believe that the pattern matching is often misused
+and why I think that in many cases it’s desirable to avoid it completely.</em></p>
+<p>I’m going to use the code from Martin’s article to describe what I believe is one common
+case of misuse of pattern matching and why I believe that the implementation avoiding
+its usage is more composable and scalable. The only reason why I’m basing this
+on Martin’s article is that this will offer the reader to see
+two opposite views on the same example implementation. That will also help the reader to see,
+that in fact, there is a trade-off when making design decisions like this one.</p>
+<div class="vocabulary">
+<p>I’ll try my best to use consist terminology within the scope of this article.
+Just keep in mind that this is just a blog post and not an academic article though so expect simplifications.</p>
+<p><strong>Data</strong> are constructed from primitive types. Functions are not data.</p>
+<p>A <strong>function</strong> is a pure<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> mathematical computation.</p>
+<p>A <strong>value</strong> is any thing that can be passed or returned by a function.
+It can be either a datum or a function<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>.</p>
+<p>A <strong>sum type</strong> is a type in which final set of values is sum of declared cases:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Bool</span> <span class="op">=</span> <span class="dt">True</span> <span class="op">|</span> <span class="dt">False</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co">-- bool has True or False values -&gt; 2 constructors</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Maybe</span> <span class="fu">a</span> <span class="op">=</span> <span class="dt">Noting</span> <span class="op">|</span> <span class="dt">Just</span> <span class="fu">a</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- maybe is `1 + (1*a)` where a is number of constructors for a</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co">-- Maybe Bool is `1 + (1*2)` -&gt; 3 (Nothing, Just True, Just False)</span></span></code></pre></div>
+<p>Enums and all primitive data are sums. Like a bit being either 0 or 1 but not both at the same time<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a>.</p>
+<p>A <strong>product type</strong> is a type where final set of possible values is a product of all individual subtypes:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">MyPair</span> <span class="op">=</span> <span class="dt">MyPair</span> <span class="dt">Bool</span> <span class="dt">Bool</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="co">-- MyPair is a product of two Bools -&gt; 2 * 2 -&gt; 4</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="kw">alias</span> <span class="dt">WithBool</span> <span class="fu">a</span> <span class="op">=</span> (<span class="fu">a</span><span class="op">,</span> <span class="dt">Bool</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- WithBool is a * 2 where a is number of a constuctors</span></span></code></pre></div>
+<p>Records and tuples are a common way of constructing products.</p>
+<p><strong>Algebraic Data Type</strong> is a type constructed using sums, products and combinations of both.</p>
+<p><strong>Pattern matching</strong> is a language feature that allows to deconstruct value of a type by extracting parts of product
+and branching over sum.</p>
+<p><strong>Closed</strong> implementation is an implementation where all valid inputs are predetermined by types
+used within its interface.</p>
+<p><strong>Opened</strong> implementation is an implementation using interface that doesn’t restrict
+where and how the data it uses are constructed as long as some type contract is satisfied.</p>
+</div>
+<h2 id="getting-started">Getting Started</h2>
+<p>The actual implementation is a bit more involved but for the purpose of
+this post, we can simply mock it using types with these purposes:</p>
+<ul>
+<li><code>Flags</code> is a type contained app configuration and contains data necessary for creating requests</li>
+<li><code>Store</code> is a type in which we store data from server</li>
+<li><code>Config msg</code> contains configuration for of the module (in reality it’s record of functions, for simplification we’re going to use a single function)</li>
+<li><code>Msg</code> is a sum type of a different types of messages requests generate.</li>
+</ul>
+<p>mocking all of those with types isomorphic to unit looks like this:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Store</span> <span class="kw">exposing</span> (<span class="op">..</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Flags</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">=</span> <span class="dt">Flags</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Store</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">=</span> <span class="dt">Store</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="kw">alias</span> <span class="dt">Config</span> <span class="fu">msg</span> <span class="op">=</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Msg</span> <span class="op">-&gt;</span> <span class="fu">msg</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Msg</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>    <span class="op">=</span> <span class="dt">Msg</span></span></code></pre></div>
+<p>This part of the Store module is not changing in between different implementations,
+but it’s important as the other code we’re about to write uses these types.</p>
+<div class="note">
+<p>The fact that we’re mocking with type wit dummy values will make the rest of the
+code look a bit useless. You must believe me that all of this fits
+into working implementation and has its purpose.</p>
+</div>
+<h2 id="version-with-sum-type-and-pattern-matching">Version with Sum Type and Pattern Matching</h2>
+<p>The <em>defunctionalized</em> version (the one proposed by Martin) follows like this:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="kw">alias</span> <span class="dt">FetchConfig</span> <span class="fu">a</span> <span class="fu">b</span> <span class="op">=</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    { <span class="fu">update</span> : <span class="fu">a</span> <span class="op">-&gt;</span> <span class="dt">Store</span> <span class="op">-&gt;</span> <span class="dt">Store</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">,</span> <span class="fu">done</span> : <span class="dt">Maybe</span> <span class="fu">b</span> <span class="op">-&gt;</span> <span class="dt">Cmd</span> <span class="dt">Msg</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="fu">fetch_</span> : <span class="dt">FetchConfig</span> <span class="fu">a</span> <span class="fu">b</span> <span class="op">-&gt;</span> <span class="dt">Config</span> <span class="fu">msg</span> <span class="op">-&gt;</span> <span class="dt">Flags</span> <span class="op">-&gt;</span> <span class="dt">Store</span> <span class="op">-&gt;</span> ( <span class="dt">Store</span><span class="op">,</span> <span class="dt">Cmd</span> <span class="fu">msg</span> )</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="fu">fetch_</span> { <span class="fu">done</span> } <span class="fu">toMsg</span> <span class="dt">Flags</span> <span class="dt">Store</span> <span class="op">=</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    ( <span class="dt">Store</span><span class="op">,</span> <span class="dt">Cmd</span><span class="op">.</span><span class="fu">map</span> <span class="fu">toMsg</span> <span class="op">&lt;|</span> <span class="fu">done</span> <span class="dt">Nothing</span> )</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">FetchAction</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    <span class="op">=</span> <span class="dt">FetchFoo</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> <span class="dt">FetchBar</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a><span class="fu">fetch</span> : <span class="dt">FetchAction</span> <span class="op">-&gt;</span> <span class="dt">Config</span> <span class="fu">msg</span> <span class="op">-&gt;</span> <span class="dt">Flags</span> <span class="op">-&gt;</span> <span class="dt">Store</span> <span class="op">-&gt;</span> ( <span class="dt">Store</span><span class="op">,</span> <span class="dt">Cmd</span> <span class="fu">msg</span> )</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a><span class="fu">fetch</span> <span class="fu">action</span> <span class="op">=</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">case</span> <span class="fu">action</span> <span class="cf">of</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>        <span class="dt">FetchFoo</span> <span class="op">-&gt;</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>            <span class="fu">fetch_</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>                { <span class="fu">update</span> <span class="op">=</span> <span class="fu">always</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>                <span class="op">,</span> <span class="fu">done</span> <span class="op">=</span> <span class="fu">always</span> <span class="dt">Cmd</span><span class="op">.</span><span class="fu">none</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>                }</span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>        <span class="dt">FetchBar</span> <span class="op">-&gt;</span></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>            <span class="fu">fetch_</span></span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>                { <span class="fu">update</span> <span class="op">=</span> <span class="fu">always</span></span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>                <span class="op">,</span> <span class="fu">done</span> <span class="op">=</span> <span class="fu">always</span> <span class="dt">Cmd</span><span class="op">.</span><span class="fu">none</span></span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>                }</span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a><span class="fu">fetchMany</span> : <span class="dt">List</span> <span class="dt">FetchAction</span> <span class="op">-&gt;</span> <span class="dt">Config</span> <span class="fu">msg</span> <span class="op">-&gt;</span> <span class="dt">Flags</span> <span class="op">-&gt;</span> <span class="dt">Store</span> <span class="op">-&gt;</span> ( <span class="dt">Store</span><span class="op">,</span> <span class="dt">Cmd</span> <span class="fu">msg</span> )</span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a><span class="fu">fetchMany</span> <span class="fu">actions</span> <span class="fu">config</span> <span class="fu">flags</span> <span class="fu">store</span> <span class="op">=</span></span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>    <span class="dt">List</span><span class="op">.</span><span class="fu">foldl</span></span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>        (\<span class="fu">action</span> ( <span class="fu">store_</span><span class="op">,</span> <span class="fu">cmd</span> ) <span class="op">-&gt;</span></span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a>            <span class="kw">let</span></span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a>                ( <span class="fu">newStore</span><span class="op">,</span> <span class="fu">newCmd</span> ) <span class="op">=</span></span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">fetch</span> <span class="fu">action</span> <span class="fu">config</span> <span class="fu">flags</span> <span class="fu">store_</span></span>
+<span id="cb4-40"><a href="#cb4-40" aria-hidden="true" tabindex="-1"></a>            <span class="kw">in</span></span>
+<span id="cb4-41"><a href="#cb4-41" aria-hidden="true" tabindex="-1"></a>            ( <span class="fu">newStore</span><span class="op">,</span> <span class="dt">Cmd</span><span class="op">.</span><span class="fu">batch</span> [ <span class="fu">cmd</span><span class="op">,</span> <span class="fu">newCmd</span> ] )</span>
+<span id="cb4-42"><a href="#cb4-42" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb4-43"><a href="#cb4-43" aria-hidden="true" tabindex="-1"></a>        ( <span class="fu">store</span><span class="op">,</span> <span class="dt">Cmd</span><span class="op">.</span><span class="fu">none</span> )</span>
+<span id="cb4-44"><a href="#cb4-44" aria-hidden="true" tabindex="-1"></a>        <span class="fu">actions</span></span></code></pre></div>
+<p>I would like to highlight some properties of this approach:</p>
+<ul>
+<li><code>FetchConfig msg</code> is sort of intermediate structure, a product of all the data that differ for each type of request.</li>
+<li><code>fetch_</code> is a helper function translating the <code>FlagConfig msg</code> to another (not visible in this example) API.</li>
+<li><code>FetchAction</code> type is a point of coupling. Sum of all possible actions.</li>
+<li><code>fetch</code> does just a branching for different actions.</li>
+<li><code>fetchMany</code> folds actions and aggregates state and commands.</li>
+</ul>
+<p>And this is how the usage looks of this API looks like:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Main</span> <span class="kw">exposing</span> (<span class="op">..</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Store</span> <span class="kw">exposing</span> (<span class="dt">Flags</span><span class="op">,</span> <span class="dt">Store</span>)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Msg</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">=</span> <span class="dt">StoreMsg</span> <span class="dt">Store</span><span class="op">.</span><span class="dt">Msg</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="fu">caller</span> : ( <span class="dt">Store</span><span class="op">,</span> <span class="dt">Cmd</span> <span class="dt">Msg</span> )</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="fu">caller</span> <span class="op">=</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Store</span><span class="op">.</span><span class="fu">fetchMany</span> [ <span class="dt">Store</span><span class="op">.</span><span class="dt">FetchFoo</span><span class="op">,</span> <span class="dt">Store</span><span class="op">.</span><span class="dt">FetchBar</span> ] <span class="dt">StoreMsg</span> <span class="dt">Flags</span> <span class="dt">Store</span></span></code></pre></div>
+<p>The <code>caller</code> is a function that calls API of the Store module.</p>
+<div class="note">
+<p>Seeing this I’m tempted to argue that putting the list argument as a last one
+would be better in this case as then it would be possible to first configure the function by applying arguments
+and than calling the function returned with different actions. Also in elm it would be possible to format
+it a bit nicely with <code>|&gt;</code> like</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">caller</span> : ( <span class="dt">Store</span><span class="op">,</span> <span class="dt">Cmd</span> <span class="dt">Msg</span> )</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">caller</span> <span class="op">=</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    [ <span class="dt">Store</span><span class="op">.</span><span class="dt">FetchFoo</span><span class="op">,</span> <span class="dt">Store</span><span class="op">.</span><span class="dt">FetchBar</span> ]</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>      <span class="op">|&gt;</span> <span class="fu">fetchMany</span> <span class="fu">configForA</span> <span class="dt">Flags</span> <span class="dt">Store</span></span></code></pre></div>
+<p>But in the reality we use yet another abstraction that expects the last value
+to be state of the store so this API is better.</p>
+</div>
+<p>No matter how hard I try to look at the version with pattern matching over the sum type,
+I don’t see how it makes things simpler. In fact, I think the only benefit gained from doing all of this
+was just that in the process, Martin reconstructed the functionality which helps with understanding it.</p>
+<p>Data constructors are, in essence, just constants and functions.
+The only thing which makes them different is that unlike regular constants and functions,
+their names start with an uppercase and not a lowercase letter.
+Well, there is another thing that makes them different.
+<strong>Pattern matching is basically branching over data constructors</strong>
+and thus is unique for cases when working with values other than functions and opaque aliases.</p>
+<div class="note">
+<p>I think it’s fair to say that arguing for API build around data constructors
+is therefore same, or at least often same, as arguing for usage of pattern matching
+in the actual implementation.
+But there are some other (more or less) good arguments for using data over functions:</p>
+<ul>
+<li>Serialization (over wire)<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a></li>
+<li>Equality, Ordering and other operations that can’t work with functions<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a></li>
+<li>Debugging is simpler with data (printing)<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a></li>
+</ul>
+</div>
+<h2 id="decoupling-by-refunctionalization">Decoupling by Refunctionalization</h2>
+<p>What I dislike about this defunctionalized implementation is that the <code>fetch</code> function now couples all the individual usages together. In other words, we can say that the API is closed over the <code>FetchAction</code> type.</p>
+<p>Let’s see how it would look like if we replaced the <code>FetchAction</code> sum by individual constants.
+Instead of having <code>FetchAction</code> type containing all the constants (constructors),
+we’re going to have a bunch of constants of the same type.</p>
+<p>First, we just define a type without worrying about details.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">FetchAction</span> <span class="op">=</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">FetchAction</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="fu">fetchFoo</span> : <span class="dt">FetchAction</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="fu">fetchFoo</span> <span class="op">=</span> <span class="dt">Debug</span><span class="op">.</span><span class="fu">todo</span> <span class="st">&quot;implement me&quot;</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="fu">fetchBar</span> : <span class="dt">FetchAction</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="fu">fetchBar</span> <span class="op">=</span> <span class="dt">Debug</span><span class="op">.</span><span class="fu">todo</span> <span class="st">&quot;implement me&quot;</span></span></code></pre></div>
+<p>We expect these functions to do everything so there is no need for <code>fetch</code> and <code>fetch_</code> helpers.</p>
+<p>Now when we know how our API should look like, let’s fill the implementation details.
+Starting with <code>FetchData</code> which is itself just a function:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">FetchAction</span> <span class="fu">msg</span> <span class="op">=</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">FetchAction</span> (<span class="dt">Config</span> <span class="fu">msg</span> <span class="op">-&gt;</span> <span class="dt">Flags</span> <span class="op">-&gt;</span> <span class="dt">Store</span> <span class="op">-&gt;</span> ( <span class="dt">Store</span><span class="op">,</span> <span class="dt">Cmd</span> <span class="fu">msg</span> ))</span></code></pre></div>
+<p>I’m wrapping a function to a constructor for extra clarity — to make it look more like a special value.
+Martin also mentions this in his post:</p>
+<blockquote>
+<p>And now, because the <code>fetchMenu</code> type annotation no longer contains any parameterized msg types,
+it simplifies all types that touch it to the point where we don’t need to <code>Cmd.map</code> the <code>Msg</code> at all!</p>
+</blockquote>
+<p>We will need to give up this simplification in our version.
+We need this polymorphism in our new API.
+The implementation for new <code>FetchAction</code> type might look like something like this:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">fetchFoo</span> : <span class="dt">FetchAction</span> <span class="fu">msg</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="fu">fetchFoo</span> <span class="op">=</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">FetchAction</span> <span class="op">&lt;|</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>        \<span class="fu">toMsg</span> <span class="dt">Flags</span> <span class="dt">Store</span> <span class="op">-&gt;</span> ( <span class="fu">store</span><span class="op">,</span> <span class="dt">Cmd</span><span class="op">.</span><span class="fu">map</span> <span class="fu">toMsg</span> <span class="dt">Cmd</span><span class="op">.</span><span class="fu">none</span> )</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a><span class="fu">fetchBar</span> : <span class="dt">FetchAction</span> <span class="fu">msg</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="fu">fetchBar</span> <span class="op">=</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">FetchAction</span> <span class="op">&lt;|</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>        \<span class="fu">toMsg</span> <span class="dt">Flags</span> <span class="dt">Store</span> <span class="op">-&gt;</span> ( <span class="fu">store</span><span class="op">,</span> <span class="dt">Cmd</span><span class="op">.</span><span class="fu">map</span> <span class="fu">toMsg</span> <span class="dt">Cmd</span><span class="op">.</span><span class="fu">none</span> )</span></code></pre></div>
+<div class="note">
+<p>If you have a difficult time dealing with the logic involving a lot of higher order function tricks,
+you might find this way of thinking useful.</p>
+<p>Just forget about functions and data and focus on values. Everything is just a value which you can further reduce and group.
+Whenever I have to deal with too many things at once, I try to look for some pattern.
+If I see some repeating part like <code>Foo -&gt; Bar -&gt; a -&gt; List a</code> I know that I can reduce it in head to some <code>Placeholder a</code>.
+The only place where you really need to understand the detail is
+when you bridge the level of abstraction to the level in which you need to concern yourself with individual pieces of this value.</p>
+<p>This works well with full-blown continuations or higher order functions in general.
+The key is to understand how two different things can be viewed as the same thing on some level
+of abstraction.</p>
+<p>In context of this article, the important thing to understand is that:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Fruit</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">=</span> <span class="dt">Apple</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> <span class="dt">Orange</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="fu">color</span> : <span class="dt">Fruit</span> <span class="op">-&gt;</span> <span class="dt">String</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="fu">color</span> <span class="fu">fruit</span> <span class="op">=</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">case</span> <span class="fu">fruit</span> <span class="cf">of</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">Apple</span> <span class="op">-&gt;</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;green&quot;</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>        <span class="dt">Oragne</span> <span class="op">-&gt;</span></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;orange&quot;</span></span></code></pre></div>
+<p>is on some level same as</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- In Elm we get `.color : Fruit -&gt; String` for free</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="kw">alias</span> <span class="dt">Fruit</span> <span class="op">=</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    { <span class="fu">color</span> : <span class="dt">String</span> }</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="fu">apple</span> : <span class="dt">Fruit</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="fu">apple</span> <span class="op">=</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>    { <span class="fu">color</span> <span class="op">=</span> <span class="st">&quot;green&quot;</span> }</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a><span class="fu">orange</span> : <span class="dt">Fruit</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a><span class="fu">orange</span> <span class="op">=</span></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>    { <span class="fu">color</span> <span class="op">=</span> <span class="st">&quot;orange&quot;</span> }</span></code></pre></div>
+<p>But both implementation are different on another level.
+Defining <code>Fruit</code> via sum creates a <strong>closed set</strong> of values.
+Defining it as a product of properties creates an <strong>open set</strong> of values.</p>
+<p>It’s even possible to define something like this:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Fruit</span> <span class="fu">a</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">=</span> <span class="dt">Fruit</span> <span class="fu">a</span> (<span class="fu">a</span> <span class="op">-&gt;</span> <span class="dt">String</span>)</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="fu">getColor</span> : <span class="dt">Fruit</span> <span class="fu">a</span> <span class="op">-&gt;</span> <span class="dt">String</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a><span class="fu">getColor</span> (<span class="dt">Fruit</span> <span class="fu">val</span> <span class="fu">getColor_</span>) <span class="op">=</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">getColor_</span> <span class="fu">val</span></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">MyFruit</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>    <span class="op">=</span> <span class="dt">Apple</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> <span class="dt">Orange</span></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="kw">alias</span> <span class="dt">SpecialFruit</span> <span class="op">=</span></span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Fruit</span> <span class="dt">MyFruit</span></span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a><span class="fu">specialFruit</span> : <span class="dt">MyFruit</span> <span class="op">-&gt;</span> <span class="dt">SpecialFruit</span></span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a><span class="fu">specialFruit</span> <span class="fu">a</span> <span class="op">=</span></span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>    (\<span class="fu">myFruit</span> <span class="op">-&gt;</span></span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>        <span class="cf">case</span> <span class="fu">myFruit</span> <span class="cf">of</span></span>
+<span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a>            <span class="dt">Apple</span> <span class="op">-&gt;</span></span>
+<span id="cb12-24"><a href="#cb12-24" aria-hidden="true" tabindex="-1"></a>                <span class="st">&quot;green&quot;</span></span>
+<span id="cb12-25"><a href="#cb12-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-26"><a href="#cb12-26" aria-hidden="true" tabindex="-1"></a>            <span class="dt">Orange</span> <span class="op">-&gt;</span></span>
+<span id="cb12-27"><a href="#cb12-27" aria-hidden="true" tabindex="-1"></a>                <span class="st">&quot;orange&quot;</span></span>
+<span id="cb12-28"><a href="#cb12-28" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb12-29"><a href="#cb12-29" aria-hidden="true" tabindex="-1"></a>        <span class="op">|&gt;</span> <span class="dt">Fruit</span> <span class="fu">a</span></span>
+<span id="cb12-30"><a href="#cb12-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-31"><a href="#cb12-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-32"><a href="#cb12-32" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">MyFruit2</span></span>
+<span id="cb12-33"><a href="#cb12-33" aria-hidden="true" tabindex="-1"></a>    <span class="op">=</span> <span class="dt">Rapsberry</span></span>
+<span id="cb12-34"><a href="#cb12-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-35"><a href="#cb12-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-36"><a href="#cb12-36" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="kw">alias</span> <span class="dt">OtherFruit</span> <span class="op">=</span></span>
+<span id="cb12-37"><a href="#cb12-37" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Fruit</span> <span class="dt">MyFruit2</span></span>
+<span id="cb12-38"><a href="#cb12-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-39"><a href="#cb12-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-40"><a href="#cb12-40" aria-hidden="true" tabindex="-1"></a><span class="fu">repsberry</span> : <span class="dt">OtherFruit</span></span>
+<span id="cb12-41"><a href="#cb12-41" aria-hidden="true" tabindex="-1"></a><span class="fu">repsberry</span> <span class="op">=</span></span>
+<span id="cb12-42"><a href="#cb12-42" aria-hidden="true" tabindex="-1"></a>    <span class="fu">always</span> <span class="st">&quot;red&quot;</span></span>
+<span id="cb12-43"><a href="#cb12-43" aria-hidden="true" tabindex="-1"></a>        <span class="op">|&gt;</span> <span class="dt">Fruit</span> <span class="dt">Rapsberry</span></span>
+<span id="cb12-44"><a href="#cb12-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-45"><a href="#cb12-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-46"><a href="#cb12-46" aria-hidden="true" tabindex="-1"></a><span class="fu">caller</span> : <span class="dt">List</span> <span class="dt">String</span></span>
+<span id="cb12-47"><a href="#cb12-47" aria-hidden="true" tabindex="-1"></a><span class="fu">caller</span> <span class="op">=</span></span>
+<span id="cb12-48"><a href="#cb12-48" aria-hidden="true" tabindex="-1"></a>    <span class="dt">List</span><span class="op">.</span><span class="fu">map</span> <span class="fu">getColor</span> [ <span class="fu">specialFruit</span> <span class="dt">Orange</span><span class="op">,</span> <span class="fu">repsberry</span> ]</span></code></pre></div>
+<p>Even though this last example seems odd for a simple case like this,
+it sort of merges the properties of the two previous implementations.
+This is how type classes are sometimes simulated in languages which don’t have them (like Elm).</p>
+<p><code>Fruit a</code> acts like a <code>class</code> of types. <code>MyFruit</code> is then sort of <code>instance</code> of this class.
+Obviously, without first-class support for such abstraction, it’s usually impractical to work with it.
+This is why in a language without higher order (ad hoc) polymorphism, it might be often
+favorable to avoid data in favor of keeping value set opened.</p>
+<p>In languages like Haskell or PureScript, it’s much easier to turn closed types to opened ones using
+things like <a href="https://hackage.haskell.org/package/free">Free</a> or by utilizing type classes.</p>
+</div>
+<p>In <code>fetchMany</code>, we only need a simple change. We no longer need to call <code>fetch</code> function because our argument
+now becomes this function itself. Also, since we’re boxing the function into the <code>FetchAction</code> constructor,
+we’re going to need to extract it first.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">fetchMany</span> : <span class="dt">List</span> (<span class="dt">FetchAction</span> <span class="fu">msg</span>) <span class="op">-&gt;</span> <span class="dt">Config</span> <span class="fu">msg</span> <span class="op">-&gt;</span> <span class="dt">Flags</span> <span class="op">-&gt;</span> <span class="dt">Store</span> <span class="op">-&gt;</span> ( <span class="dt">Store</span><span class="op">,</span> <span class="dt">Cmd</span> <span class="fu">msg</span> )</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="fu">fetchMany</span> <span class="fu">actions</span> <span class="fu">config</span> <span class="fu">flags</span> <span class="fu">store</span> <span class="op">=</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">List</span><span class="op">.</span><span class="fu">foldl</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>        (\(<span class="dt">FetchAction</span> <span class="fu">action</span>) ( <span class="fu">store_</span><span class="op">,</span> <span class="fu">cmd</span> ) <span class="op">-&gt;</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>            <span class="kw">let</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>                ( <span class="fu">newStore</span><span class="op">,</span> <span class="fu">newCmd</span> ) <span class="op">=</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">action</span> <span class="fu">config</span> <span class="fu">flags</span> <span class="fu">store_</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>            <span class="kw">in</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>            ( <span class="fu">newStore</span><span class="op">,</span> <span class="dt">Cmd</span><span class="op">.</span><span class="fu">batch</span> [ <span class="fu">cmd</span><span class="op">,</span> <span class="fu">newCmd</span> ] )</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>        ( <span class="fu">store</span><span class="op">,</span> <span class="dt">Cmd</span><span class="op">.</span><span class="fu">none</span> )</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>        <span class="fu">actions</span></span></code></pre></div>
+<p><code>FetchAction</code> type now has to be parametrized the same way the <code>fetch</code> function was in the previous version.</p>
+<p>Look at the usage now:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Main</span> <span class="kw">exposing</span> (<span class="op">..</span>)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Store</span> <span class="kw">exposing</span> (<span class="dt">Flags</span><span class="op">,</span> <span class="dt">Store</span>)</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Msg</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">=</span> <span class="dt">StoreMsg</span> <span class="dt">Store</span><span class="op">.</span><span class="dt">Msg</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a><span class="fu">caller</span> : ( <span class="dt">Store</span><span class="op">,</span> <span class="dt">Cmd</span> <span class="dt">Msg</span> )</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a><span class="fu">caller</span> <span class="op">=</span></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">fetchMany</span> [ <span class="dt">Store</span><span class="op">.</span><span class="fu">fetchFoo</span><span class="op">,</span> <span class="dt">Store</span><span class="op">.</span><span class="fu">fetchBar</span> ] <span class="dt">StoreMsg</span> <span class="dt">Flags</span> <span class="dt">Store</span></span></code></pre></div>
+<p>See the difference? It’s just <code>Store.FetchFoo</code> for “defunctionalized” version versus <code>Store.fetchFoo</code> in the new one.
+Is this more complicated in any way? I let you be the judge.</p>
+<h2 id="extensibility">Extensibility</h2>
+<p>Since the second example doesn’t contain tight coupling to the same sum type, it can be quite easily extended by composition.
+For instance we can generalize the <code>Store</code> module to work with extensible record:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Store</span> <span class="kw">exposing</span> (<span class="op">..</span>)</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Flags</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">=</span> <span class="dt">Flags</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="kw">alias</span> <span class="dt">Store</span> <span class="fu">r</span> <span class="op">=</span></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>    { <span class="fu">r</span> <span class="op">|</span> <span class="fu">x</span> : () }</span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="kw">alias</span> <span class="dt">Config</span> <span class="fu">msg</span> <span class="op">=</span></span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Msg</span> <span class="op">-&gt;</span> <span class="fu">msg</span></span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Msg</span></span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a>    <span class="op">=</span> <span class="dt">Msg</span></span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">FetchAction</span> <span class="fu">msg</span> <span class="fu">r</span></span>
+<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a>    <span class="op">=</span> <span class="dt">FetchAction</span> (<span class="dt">Config</span> <span class="fu">msg</span> <span class="op">-&gt;</span> <span class="dt">Flags</span> <span class="op">-&gt;</span> <span class="dt">Store</span> <span class="fu">r</span> <span class="op">-&gt;</span> ( <span class="dt">Store</span> <span class="fu">r</span><span class="op">,</span> <span class="dt">Cmd</span> <span class="fu">msg</span> ))</span>
+<span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-24"><a href="#cb15-24" aria-hidden="true" tabindex="-1"></a><span class="fu">fetchFoo</span> : <span class="dt">FetchAction</span> <span class="fu">msg</span> <span class="fu">r</span></span>
+<span id="cb15-25"><a href="#cb15-25" aria-hidden="true" tabindex="-1"></a><span class="fu">fetchFoo</span> <span class="op">=</span></span>
+<span id="cb15-26"><a href="#cb15-26" aria-hidden="true" tabindex="-1"></a>    <span class="dt">FetchAction</span> <span class="op">&lt;|</span></span>
+<span id="cb15-27"><a href="#cb15-27" aria-hidden="true" tabindex="-1"></a>        \<span class="fu">toMsg</span> <span class="dt">Flags</span> <span class="fu">store</span> <span class="op">-&gt;</span> ( <span class="fu">store</span><span class="op">,</span> <span class="dt">Cmd</span><span class="op">.</span><span class="fu">map</span> <span class="fu">toMsg</span> <span class="dt">Cmd</span><span class="op">.</span><span class="fu">none</span> )</span>
+<span id="cb15-28"><a href="#cb15-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-29"><a href="#cb15-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-30"><a href="#cb15-30" aria-hidden="true" tabindex="-1"></a><span class="fu">fetchBar</span> : <span class="dt">FetchAction</span> <span class="fu">msg</span> <span class="fu">r</span></span>
+<span id="cb15-31"><a href="#cb15-31" aria-hidden="true" tabindex="-1"></a><span class="fu">fetchBar</span> <span class="op">=</span></span>
+<span id="cb15-32"><a href="#cb15-32" aria-hidden="true" tabindex="-1"></a>    <span class="dt">FetchAction</span> <span class="op">&lt;|</span></span>
+<span id="cb15-33"><a href="#cb15-33" aria-hidden="true" tabindex="-1"></a>        \<span class="fu">toMsg</span> <span class="dt">Flags</span> <span class="fu">store</span> <span class="op">-&gt;</span> ( <span class="fu">store</span><span class="op">,</span> <span class="dt">Cmd</span><span class="op">.</span><span class="fu">map</span> <span class="fu">toMsg</span> <span class="dt">Cmd</span><span class="op">.</span><span class="fu">none</span> )</span>
+<span id="cb15-34"><a href="#cb15-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-35"><a href="#cb15-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-36"><a href="#cb15-36" aria-hidden="true" tabindex="-1"></a><span class="fu">fetchMany</span> : <span class="dt">List</span> (<span class="dt">FetchAction</span> <span class="fu">msg</span> <span class="fu">r</span>) <span class="op">-&gt;</span> <span class="dt">Config</span> <span class="fu">msg</span> <span class="op">-&gt;</span> <span class="dt">Flags</span> <span class="op">-&gt;</span> <span class="dt">Store</span> <span class="fu">r</span> <span class="op">-&gt;</span> ( <span class="dt">Store</span> <span class="fu">r</span><span class="op">,</span> <span class="dt">Cmd</span> <span class="fu">msg</span> )</span>
+<span id="cb15-37"><a href="#cb15-37" aria-hidden="true" tabindex="-1"></a><span class="fu">fetchMany</span> <span class="fu">actions</span> <span class="fu">config</span> <span class="fu">flags</span> <span class="fu">store</span> <span class="op">=</span></span>
+<span id="cb15-38"><a href="#cb15-38" aria-hidden="true" tabindex="-1"></a>    <span class="dt">List</span><span class="op">.</span><span class="fu">foldl</span></span>
+<span id="cb15-39"><a href="#cb15-39" aria-hidden="true" tabindex="-1"></a>        (\(<span class="dt">FetchAction</span> <span class="fu">action</span>) ( <span class="fu">store_</span><span class="op">,</span> <span class="fu">cmd</span> ) <span class="op">-&gt;</span></span>
+<span id="cb15-40"><a href="#cb15-40" aria-hidden="true" tabindex="-1"></a>            <span class="kw">let</span></span>
+<span id="cb15-41"><a href="#cb15-41" aria-hidden="true" tabindex="-1"></a>                ( <span class="fu">newStore</span><span class="op">,</span> <span class="fu">newCmd</span> ) <span class="op">=</span></span>
+<span id="cb15-42"><a href="#cb15-42" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">action</span> <span class="fu">config</span> <span class="fu">flags</span> <span class="fu">store_</span></span>
+<span id="cb15-43"><a href="#cb15-43" aria-hidden="true" tabindex="-1"></a>            <span class="kw">in</span></span>
+<span id="cb15-44"><a href="#cb15-44" aria-hidden="true" tabindex="-1"></a>            ( <span class="fu">newStore</span><span class="op">,</span> <span class="dt">Cmd</span><span class="op">.</span><span class="fu">batch</span> [ <span class="fu">cmd</span><span class="op">,</span> <span class="fu">newCmd</span> ] )</span>
+<span id="cb15-45"><a href="#cb15-45" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb15-46"><a href="#cb15-46" aria-hidden="true" tabindex="-1"></a>        ( <span class="fu">store</span><span class="op">,</span> <span class="dt">Cmd</span><span class="op">.</span><span class="fu">none</span> )</span>
+<span id="cb15-47"><a href="#cb15-47" aria-hidden="true" tabindex="-1"></a>        <span class="fu">actions</span></span></code></pre></div>
+<p>And extend the store with custom data in the main module:</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Main</span> <span class="kw">exposing</span> (<span class="op">..</span>)</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Store</span> <span class="kw">exposing</span> (<span class="dt">Flags</span>)</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Msg</span></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">=</span> <span class="dt">StoreMsg</span> <span class="dt">Store</span><span class="op">.</span><span class="dt">Msg</span></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="kw">alias</span> <span class="dt">ExtendedStore</span> <span class="op">=</span></span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>    { <span class="fu">x</span> : ()<span class="op">,</span> <span class="fu">y</span> : () }</span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a><span class="fu">caller</span> : ( <span class="dt">ExtendedStore</span><span class="op">,</span> <span class="dt">Cmd</span> <span class="dt">Msg</span> )</span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a><span class="fu">caller</span> <span class="op">=</span></span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Store</span><span class="op">.</span><span class="fu">fetchMany</span></span>
+<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a>        [ <span class="dt">Store</span><span class="op">.</span><span class="fu">fetchFoo</span></span>
+<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a>        <span class="op">,</span> <span class="dt">Store</span><span class="op">.</span><span class="fu">fetchBar</span></span>
+<span id="cb16-19"><a href="#cb16-19" aria-hidden="true" tabindex="-1"></a>        <span class="op">,</span> <span class="fu">fetchBaz</span></span>
+<span id="cb16-20"><a href="#cb16-20" aria-hidden="true" tabindex="-1"></a>        ]</span>
+<span id="cb16-21"><a href="#cb16-21" aria-hidden="true" tabindex="-1"></a>        <span class="dt">StoreMsg</span></span>
+<span id="cb16-22"><a href="#cb16-22" aria-hidden="true" tabindex="-1"></a>        <span class="dt">Flags</span></span>
+<span id="cb16-23"><a href="#cb16-23" aria-hidden="true" tabindex="-1"></a>        { <span class="fu">x</span> <span class="op">=</span> ()<span class="op">,</span> <span class="fu">y</span> <span class="op">=</span> () }</span>
+<span id="cb16-24"><a href="#cb16-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-25"><a href="#cb16-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-26"><a href="#cb16-26" aria-hidden="true" tabindex="-1"></a><span class="fu">fetchBaz</span> : <span class="dt">FetchAction</span> <span class="dt">Msg</span> <span class="dt">ExtendedStore</span></span>
+<span id="cb16-27"><a href="#cb16-27" aria-hidden="true" tabindex="-1"></a><span class="fu">fetchBaz</span> <span class="op">=</span></span>
+<span id="cb16-28"><a href="#cb16-28" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Store</span><span class="op">.</span><span class="dt">FetchAction</span> <span class="op">&lt;|</span></span>
+<span id="cb16-29"><a href="#cb16-29" aria-hidden="true" tabindex="-1"></a>        \<span class="fu">toMsg</span> <span class="dt">Flags</span> <span class="fu">store</span> <span class="op">-&gt;</span> ( <span class="fu">store</span><span class="op">,</span> <span class="dt">Cmd</span><span class="op">.</span><span class="fu">none</span> )</span></code></pre></div>
+<p>This would not be possible with defunctionalized version.</p>
+<h2 id="usage-patterns-with-higher-order-functions">Usage Patterns with Higher Order Functions</h2>
+<p>Martin ends his post with showing the screenshot — a part of final diff.
+In this code section, he simplified code into an alias to data constructor.
+This code was also highlighted in the PR by a comment.</p>
+<p>I don’t think this part is significant in any way though. Furthermore, I think it’s avoidable to do something
+like this in any shape or form.</p>
+<p>Instead of emitting any type of intermediate command, I think the <code>init</code> function should look like this.</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode elm"><code class="sourceCode elm"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">init</span> : (<span class="dt">List</span> (<span class="dt">FetchAction</span> <span class="fu">msg</span>) <span class="op">-&gt;</span> <span class="dt">Cmd</span> <span class="fu">msg</span>) <span class="op">-&gt;</span> ( ()<span class="op">,</span> <span class="dt">Cmd</span> <span class="fu">msg</span> )</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="fu">init</span> <span class="fu">fetchMany</span> <span class="op">=</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>    ( ()<span class="op">,</span> <span class="fu">fetchMany</span> [ <span class="dt">Store</span><span class="op">.</span><span class="fu">fetchFoo</span><span class="op">,</span> <span class="dt">Store</span><span class="op">.</span><span class="fu">fetchBar</span> ] )</span></code></pre></div>
+<p>With this, we won’t need any special <code>Msg</code> in parent module.
+All we do is pass down the <code>Store.fetchMany</code> with applied arguments.
+Simple as that.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>I hope I managed to demonstrates one reasonable use-case where avoiding pattern matching and data in favor of
+functions leads to more extensible implementation. This doesn’t mean that pattern matching is bad in general.
+In fact, it’s a useful tool for modeling closed APIs. I’m personally leaning towards an opinion
+that branching over closed data is generally good in high level and low level code but not that much
+in the abstract source in the middle of logic. In upper level, it’s often desirable to
+dispatch the control between the blocks of program. In lower level logic, implementation details are being
+extracted and acted upon. But it’s likely that most of the stuff in the middle should be designed with extensibility
+provided by open design.</p>
+<p>A good example of open API is <a href="https://package.elm-lang.org/packages/elm/html/latest/">elm/html</a> which is opened using <a href="https://package.elm-lang.org/packages/elm/html/latest/Html#node">node</a> constructor.
+It would be possible to define type <code>Node</code> and functions operating with this closed sum type but it would be a poor design choice.</p>
+<p>By designing all the code around closed structures, we’re in some sense
+making a full circle back to C interfaces with integer arguments used to change behavior of procedure.
+We just have slightly more expressive tool to accomplish that.</p>
+<p>Some time ago, I’ve also created <a href="https://package.elm-lang.org/packages/turboMaCk/elm-continue/latest/">elm-continue</a>, a package with even more generalized abstractions
+for working with continuations than what we used here.
+I just must warn you, that not everyone from elm community would likely approve of using it.</p>
+<p>I was honestly unsure if I should write this post.
+I was a bit afraid that it will looks too much like a criticism of Martin’s original article which is not my point at all.
+I also know a lot of people who will likely disagree with my feelings towards pattern matching and “over-usage” of data.
+The reason why I wrote it in the end is the slight chance that someone will find this useful or interesting (looking at you, Zdenko)
+and that maybe I manage to avoid unnecessary negative feelings around this. This doesn’t mean you should avoid criticism.
+In the end, it’s just a tool of progress.</p>
+<section id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1"><p>In any turing complete language (including functional ones), it’s possible to define partial functions.
+Like functions that never terminate.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>This is true only in languages with higher order functions.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3"><p>All hail the quantum universe.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4"><p>Some languages like <a href="http://unisonweb.org">Unison</a> are able to serialize functions.
+Unison specifically does so by sending the AST over the wire.
+Even much simpler techniques comes in mind. Languages with <code>eval</code>
+(like most of the dynamic languages and almost all lisps (excluding clojure-script) has such function).
+The primary concern here is security and executing arbitrary code from some unknown source
+is what is often called <a href="https://en.wikipedia.org/wiki/Arbitrary_code_execution">arbitrary code execution vunerability</a>. Precisely because
+of the security, it’s always a good idea to close APIs exposed to untrusted 3rd parties.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn5"><p>Elm type system allows you to use equality operator (<code>(==)</code>) over any type
+but blows up in runtime with functions. Languages with higher order polymorphism
+or operator overloading won’t be able to statically detect such cases and won’t
+allow you to use equality over functions. I’m not aware of any language in which
+equality over function is possible but I believe in <a href="http://unisonweb.org">Unison</a>, it might be possible.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn6"><p>By definition, it will still help you to just see an intermediate value but that might
+be enough for certain problems. Debugging is usually not an issue with step in debugging.<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>
+</main>
+
+
+
+      </div>
+      <footer id="footer">
+        <a href="https://github.com/turboMaCk/turboMaCk.github.io">Source</a> available under BSD-3-Clause.<br>
+        Content is published under <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.<br>
+        Proudly powered by <a href="http://jaspervdj.be/hakyll">Hakyll</a>; Theme by Marek Fajkus<br>
+        <a href="../rss.xml">RSS 2.0</a> compatible<br>
+        This site is not tracking you.
+      </footer>
+    </main>
+
+    <!-- MathJax is library for displaying math nicely -->
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML" async></script>
+  </body>
+</html>
