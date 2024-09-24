@@ -6,11 +6,12 @@ Feel free to use both content and source code as you wish as log as you respect 
 ## Usage
 
 This project is using [nix](https://nixos.org/nix/) as a build tool.
+Make sure you have [flake support](https://nixos.wiki/wiki/flakes) enabled in your installation.
 
 For interactive shell environment run:
 
 ```
-$ nix-shell --pure
+$ nix develop
 ```
 
 from within this directory. This should start bash with `site` binary available to use.
@@ -22,6 +23,18 @@ $ site build  # compiles HTML
 $ site watch  # runs developement server with watcher
 $ site clean  # cleans the cache
 $ site help   # show full list of commands
+```
+
+You can also build site binary:
+
+```
+nix build
+```
+
+and run it directly
+
+```
+./result/bin/site help
 ```
 
 
