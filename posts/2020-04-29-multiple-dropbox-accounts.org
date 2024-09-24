@@ -19,8 +19,6 @@ apps are not prepared for. Two accounts on a single machine.
 
 Lets, for instance, have a look at [[https://www.dropbox.com][Dropbox]].
 
-[[file:/media/dropbox-account.png]]
-
 There is no option to add an account without logging-out the existing one.
 There are some [[https://help.dropbox.com/teams-admins/team-member/team-folders][options for teams]] but you can't use them if your use-case
 involves multiple accounts.
@@ -110,8 +108,6 @@ but if it does, it will surely work for these as well.
 Now all that is needed is to ~chmod +x~ the script and move it to ~$PATH~.
 On MacOS it might also be practical to use [[https://support.apple.com/guide/automator/welcome/mac][Automator]] to wrap the script
 as an application.
-
-[[file:/media/dropbox-tray.png]]
 
 * Nix
 
